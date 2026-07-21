@@ -380,7 +380,9 @@ function statusText(status) {
 }
 
 function conflictType(type) {
-  return { CAPACITY: '产能', LABOR: '人力', GRID: '工位', OCCUPANCY: '占用率' }[type] ?? type
+  return { CAPACITY: '产能', LABOR: '人力', GRID: '工位', OCCUPANCY: '占用率',
+           DEADLINE: '项目延期', WINDOW: '无可行窗口', LOCKED: '锁定冲突',
+           RESOURCE: '资源不足', DEPENDENCY: '依赖违反' }[type] ?? type
 }
 
 onMounted(() => { loadJobs(true); loadRules() })

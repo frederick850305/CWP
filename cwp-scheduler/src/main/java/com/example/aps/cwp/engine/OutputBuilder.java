@@ -151,6 +151,40 @@ final class OutputBuilder {
                 u.putArray("relatedCwps").add(task.cwp.code); n.set("conflictedCwps", oneCwp(task));
             }
         }
+        // 补齐时间维度与兜底类硬约束：这些标记由 ScheduleEngine 通过 markForced 写入
+        // violationCodes，但上面只覆盖了 OCCUPANCY_LIMIT / GRID_LIMIT 两种资源台账冲突。
+        // 若不在此生成对应条目，就会出现 summary.feasible=false（按 violationCodes 计）而
+        // resourceConflictList 为空（按台账超限计）的展示矛盾。
+        for (ScheduledTask task : scheduled.values()) {
+            for (String code : task.violationCodes) {
+                if ("OCCUPANCY_LIMIT".equals(code) || "GRID_LIMIT".equals(code)) continue;
+                String ctype;
+                if ("PROJECT_DEADLINE".equals(code)) ctype = "DEADLINE";
+                else if ("NO_FEASIBLE_WINDOW".equals(code)) ctype = "WINDOW";
+                else if ("LOCKED_RESOURCE_CONFLICT".equals(code)) ctype = "LOCKED";
+                else if ("RESOURCE_LIMIT".equals(code)) ctype = "RESOURCE";
+                else if ("LABOR_LIMIT".equals(code)) ctype = "LABOR";
+                else if (code.startsWith("DEPENDENCY_")) ctype = "DEPENDENCY";
+                else ctype = code;
+                ObjectNode n = out.addObject();
+                n.put("conflictId", "RC-" + task.cwp.code + "-" + code + "-" + (sequence++));
+                n.put("conflictType", ctype);
+                n.put("date", task.start.toString());
+                String groupId = task.operationResource.isEmpty() ? "" : task.operationResource.values().iterator().next();
+                ResourceGroup g = task.operationResource.isEmpty() ? null : model.groups.get(groupId);
+                n.put("resourceGroupId", groupId);
+                n.put("resourceGroupName", g == null ? task.cwp.name : g.name);
+                n.put("locationCode", locationFor(task, model));
+                n.put("conflictScope", "CWP");
+                if ("PROJECT_DEADLINE".equals(code)) {
+                    Project p = model.projects.get(task.cwp.projectCode);
+                    n.put("projectCode", task.cwp.projectCode);
+                    n.put("plannedEnd", p == null ? null : p.plannedEndText);
+                }
+                ArrayNode cwps = n.putArray("conflictedCwps");
+                ObjectNode c = cwps.addObject(); c.put("cwpCode", task.cwp.code); c.put("cwpName", task.cwp.name);
+            }
+        }
         return out;
     }
 
@@ -265,7 +299,8 @@ final class OutputBuilder {
     /** 汇总指标：可行性、目标度量快照、总成本、约束违反数与运行耗时。 */
     private ObjectNode summary(Model model, Map<String, ScheduledTask> scheduled, Ledger ledger,
                                ArrayNode utilization, ArrayNode conflicts, List<String> warnings, long runtimeMillis) {
-        int hard=0;for(ScheduledTask t:scheduled.values())hard+=t.violationCodes.size(); hard+=conflicts.size();
+        // 统一以冲突清单（resourceConflictList）为准，避免 feasible 与冲突诊断不一致。
+        int hard = conflicts.size();
         BigDecimal cost=totalCost(model,scheduled,ledger);BigDecimal avg=BigDecimal.ZERO;
         if(utilization.size()>0){for(int i=0;i<utilization.size();i++)avg=avg.add(utilization.get(i).path("utilizationRate").decimalValue());avg=avg.divide(BigDecimal.valueOf(utilization.size()),4,RoundingMode.HALF_UP);}
         int priorityScore=0;for(ScheduledTask t:scheduled.values())if(!t.withConflict)priorityScore+=t.cwp.priority;

@@ -26,15 +26,33 @@ CWP/
 └── AGENTS.md             # 协作 / 代理上下文说明
 ```
 
-## 快速开始
+## 快速开始（源码开发模式，推荐）
+
+> 以下命令在**仓库根目录 `CWP/`**（即本文件所在目录）下执行。
+
+无需打包，直接运行源码；修改代码后自动热更新。
 
 ```bash
+# 终端 1：后端源码运行（改 Java 保存后 devtools 自动重启，无需打包）
 cd cwp-scheduler
-mvn clean package
-java -jar target/cwp-scheduler-1.0.0.jar
+mvn spring-boot:run
+
+# 终端 2：前端热更新（改代码即时生效）
+cd cwp-scheduler/frontend
+npm run dev
 ```
 
-启动后访问 `http://localhost:8080/` 打开排程驾驶舱。完整启动、API 与构建说明见 [`cwp-scheduler/README.md`](cwp-scheduler/README.md)。
+启动后访问 **http://localhost:5173/** 打开排程驾驶舱（前端通过代理调用 8080 后端）。
+
+> 说明：8080 提供的是打包后的静态页面，开发调试请使用 5173。传统打包部署方式见 [`cwp-scheduler/README.md`](cwp-scheduler/README.md)。
+
+## 停止服务
+
+```bash
+pkill -f "spring-boot:run"        # 停止后端
+pkill -f "CwpSchedulerApplication"
+pkill -f "vite"                   # 停止前端
+```
 
 ## 说明
 

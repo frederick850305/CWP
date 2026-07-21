@@ -4,16 +4,27 @@
 
 现有示例输出 JSON 只用于说明字段结构。服务不会生成输入中不存在的 CWP，也不会复现无法从输入推导的冲突数字。
 
-## 启动
+## 启动（源码开发模式，推荐）
+
+直接运行源码、不打包；改 Java 保存后 devtools 自动重启，改前端代码 Vite 热更新。
+
+后端（终端 1）：
 
 ```bash
-mvn clean package
-java -jar target/cwp-scheduler-1.0.0.jar
+mvn spring-boot:run
 ```
 
 默认监听 `8080`。线程数、队列长度、求解时限和时区在 `src/main/resources/application.yml` 中配置。工程以 Java 8 字节码编译；更高版本 JDK 也可用于构建。
 
-启动后可在浏览器打开 `http://localhost:8080/` 使用 Vue 3 排程驾驶舱。界面支持：
+前端（终端 2）：
+
+```bash
+cd frontend
+npm install          # 首次需安装依赖
+npm run dev         # Vite 热更新，监听 5173，/api 代理到 http://localhost:8080
+```
+
+启动后浏览器打开 **http://localhost:5173/** 使用 Vue 3 排程驾驶舱（8080 仅为后端 API，其静态页面为旧打包产物，开发调试请用 5173）。界面支持：
 
 - 运行内置示例或上传排程输入 JSON；
 - 从最近任务列表直接打开内存中的排程结果；
@@ -21,17 +32,30 @@ java -jar target/cwp-scheduler-1.0.0.jar
 - 在“规则助手”中用中文指令预览、确认并应用求解策略；
 - 将排程结果导出为 JSON 文件。
 
-前端源码位于 `frontend/`。修改界面后重新构建静态资源：
+## 停止服务
+
+```bash
+pkill -f "spring-boot:run"        # 停止后端（mvn 进程 + Java 子进程）
+pkill -f "CwpSchedulerApplication"
+pkill -f "vite"                   # 停止前端
+```
+
+## 传统打包部署（可选）
+
+```bash
+mvn clean package
+java -jar target/cwp-scheduler-1.0.0.jar
+```
+
+修改界面后重新构建静态资源并打包：
 
 ```bash
 cd frontend
 npm install
-npm run build
+npm run build     # 输出到 src/main/resources/static
 cd ..
 mvn package
 ```
-
-开发模式可运行 `npm run dev`，Vite 会将 `/api` 请求代理到 `http://localhost:8080`。
 
 内置示例 `examples/cwp-schedule-test.json` 按船厂布局构造，包含 5 个项目、每项目 3 个单体，以及下料、结构预制、工艺管线、制管、喷砂、喷漆、预舾装、预留场地和两期总装工位等资源。数据生成逻辑位于 `scripts/generate-yard-test-data.mjs`；界面中的“运行示例排程”会直接提交该数据。
 

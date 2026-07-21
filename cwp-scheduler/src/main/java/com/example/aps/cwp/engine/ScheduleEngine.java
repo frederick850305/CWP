@@ -205,7 +205,7 @@ public class ScheduleEngine {
         for (Operation op : task.cwp.operations) {
             ResourceGroup primary = model.groups.get(op.resourceGroupId);
 
-            // 先尝试主资源；主资源不足时，按配置顺序尝试模式和单位兼容的替代资源。
+            // 先尝试主资源；主资源不足时，按配置顺序尝试单位兼容的替代资源（允许跨模式，如 CAPACITY→OCCUPANCY_RATIO）。
             List<ResourceGroup> choices = new ArrayList<ResourceGroup>(); choices.add(primary);
             if (rules.isAllowResourceSubstitution()) {
                 for (String sid : primary.substitutes) {
@@ -400,9 +400,20 @@ public class ScheduleEngine {
         }
     }
 
-    /** 判断两个资源组是否可互相替代：模式相同且单位兼容。 */
+    /**
+     * 判断两个资源组是否可互相替代。
+     * 放开为“跨模式替代”：只要工作量单位兼容即可，不再要求模式相同。
+     * 空单位视为通配（用于 OCCUPANCY_RATIO 这类不按量计、而是按占用比例吸收工作的资源组），
+     * 从而允许例如散件喷砂(CAPACITY)回退到预制装焊区(OCCUPANCY_RATIO)。
+     */
     private boolean compatible(ResourceGroup a, ResourceGroup b) {
-        return a.mode.equals(b.mode) && (a.unit.length() == 0 || a.unit.equals(b.unit));
+        return unitCompatible(a, b);
+    }
+
+    /** 单位兼容：任一端为空单位（通配）则视为兼容；否则必须相等。 */
+    private boolean unitCompatible(ResourceGroup a, ResourceGroup b) {
+        if (a.unit.length() == 0 || b.unit.length() == 0) return true;
+        return a.unit.equals(b.unit);
     }
     /** 将任务标记为带冲突，并记录具体的冲突代码。 */
     private void markForced(ScheduledTask task, String code) {
@@ -426,6 +437,8 @@ public class ScheduleEngine {
         final Map<String, Integer> laborByDay = new HashMap<String, Integer>();
         final Map<String, BigDecimal> occupancyByDay = new HashMap<String, BigDecimal>();
         final Map<String, boolean[][]> gridByDay = new HashMap<String, boolean[][]>();
+        // 月度小块产能：GRID_BLOCK 资源组按自然月累计已占用的“块·月”，用于总装月吞吐上限(group.maximum)校验。
+        final Map<String, BigDecimal> gridCapacityByMonth = new HashMap<String, BigDecimal>();
         final List<ScheduledTask> tasks = new ArrayList<ScheduledTask>();
         // 利用率滚动聚合：sumUtil 为各(资源组,月)利用率之和，utilCount 为计数，用于增量计算平均利用率。
         BigDecimal sumUtil = BigDecimal.ZERO;
@@ -510,6 +523,14 @@ public class ScheduleEngine {
 
         GridPlacement findAndReserveGrid(ResourceGroup group, AssemblyUnit unit, LocalDate start, LocalDate end) {
             // 网格尺寸来自单体 rows/cols；是否允许跨工位由资源组 allowCrossStation 控制。
+            // 月度小块产能校验：单体跨越的各自然月累计“块·月”不得超 group.maximum（无上限时跳过）。
+            if (group.maximum.compareTo(BigDecimal.ZERO) > 0) {
+                for (Map.Entry<YearMonth, BigDecimal> e : gridMonthlyWork(unit.blockCount, start, end).entrySet()) {
+                    BigDecimal used = gridCapacityByMonth.get(key(group.id, e.getKey()));
+                    if (used == null) used = BigDecimal.ZERO;
+                    if (used.add(e.getValue()).compareTo(group.maximum) > 0) return null;
+                }
+            }
             for (Phase phase : group.phases) {
                 int totalColumns = phase.stations.size() * group.gridCols;
                 for (int row = 0; row + unit.rows <= group.gridRows; row++) {
@@ -522,7 +543,7 @@ public class ScheduleEngine {
                             for (int s = firstStation; s <= lastStation; s++) {
                                 p.stationIds.add(phase.stations.get(s).id); p.stationNames.add(phase.stations.get(s).name);
                             }
-                            reserveGrid(group, phase, start, end, row, col, unit.rows, unit.cols, totalColumns); return p;
+                            reserveGrid(group, phase, start, end, row, col, unit.rows, unit.cols, totalColumns, unit.blockCount); return p;
                         }
                     }
                 }
@@ -540,12 +561,33 @@ public class ScheduleEngine {
             return true;
         }
         private void reserveGrid(ResourceGroup group, Phase phase, LocalDate start, LocalDate end,
-                                 int row, int col, int rows, int cols, int totalColumns) {
+                                 int row, int col, int rows, int cols, int totalColumns, int blockCount) {
             for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
                 String k = key(group.id, phase.id, d); boolean[][] grid = gridByDay.get(k);
                 if (grid == null) { grid = new boolean[group.gridRows][totalColumns]; gridByDay.put(k, grid); }
                 for (int r = row; r < row + rows; r++) for (int c = col; c < col + cols; c++) grid[r][c] = true;
             }
+            // 累计月度小块产能占用（块·月/月），供后续单体校验月吞吐上限。
+            if (group.maximum.compareTo(BigDecimal.ZERO) > 0)
+                for (Map.Entry<YearMonth, BigDecimal> e : gridMonthlyWork(blockCount, start, end).entrySet())
+                    add(gridCapacityByMonth, key(group.id, e.getKey()), e.getValue());
+        }
+
+        /** 将单体在网格上的占用折算为各自然月的“块·月”：按当月实际重叠天数占比分摊 blockCount。 */
+        private Map<YearMonth, BigDecimal> gridMonthlyWork(int blockCount, LocalDate start, LocalDate end) {
+            Map<YearMonth, Long> days = new LinkedHashMap<YearMonth, Long>();
+            for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
+                YearMonth ym = YearMonth.from(d);
+                Long c = days.get(ym); days.put(ym, (c == null ? 0L : c) + 1L);
+            }
+            Map<YearMonth, BigDecimal> result = new LinkedHashMap<YearMonth, BigDecimal>();
+            for (Map.Entry<YearMonth, Long> e : days.entrySet()) {
+                BigDecimal consumed = BigDecimal.valueOf(blockCount)
+                        .multiply(BigDecimal.valueOf(e.getValue()))
+                        .divide(BigDecimal.valueOf(e.getKey().lengthOfMonth()), 4, RoundingMode.HALF_UP);
+                result.put(e.getKey(), consumed);
+            }
+            return result;
         }
 
         Map<String, Integer> laborPerLocation(ScheduledTask task) {

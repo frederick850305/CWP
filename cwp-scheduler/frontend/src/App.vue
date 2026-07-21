@@ -39,6 +39,71 @@ const projects = computed(() => result.value?.projectCriticalPathOutput?.project
 const laborRows = computed(() => (result.value?.monthlyLaborDemandCurve ?? []).flatMap(month =>
   (month.byLocation ?? []).map(row => ({ ...row, month: month.month }))))
 const maxLabor = computed(() => Math.max(1, ...laborRows.value.map(item => Number(item.demand))))
+
+// 资源类型筛选与分组条形图数据
+const selectedResourceType = ref('all')
+
+/** 所有资源类型（resourceGroupName）去重列表。 */
+const resourceTypeOptions = computed(() => {
+  const names = new Set(utilizations.value.map(item => item.resourceGroupName).filter(Boolean))
+  return Array.from(names)
+})
+
+/** 把利用率与人员需求按 location+month 关联，并按当前选中的资源类型聚合。 */
+const resourceTypeChartData = computed(() => {
+  if (!utilizations.value.length) return []
+  const laborByLocationMonth = new Map()
+  laborRows.value.forEach(row => {
+    laborByLocationMonth.set(`${row.locationName}|${row.month}`, Number(row.demand || 0))
+  })
+  const combined = utilizations.value.map(item => {
+    const laborDemand = laborByLocationMonth.get(`${item.locationName}|${item.month}`) || 0
+    return {
+      resourceGroupName: item.resourceGroupName,
+      locationName: item.locationName,
+      month: item.month,
+      utilization: Number(item.utilizationRate || 0),
+      laborDemand,
+      usedAmount: item.usedAmount,
+      totalCapacity: item.totalCapacity
+    }
+  })
+
+  if (selectedResourceType.value === 'all') {
+    // 全部：按资源类型聚合，取平均值
+    const groups = new Map()
+    combined.forEach(item => {
+      if (!groups.has(item.resourceGroupName)) {
+        groups.set(item.resourceGroupName, { label: item.resourceGroupName, utilSum: 0, laborSum: 0, count: 0 })
+      }
+      const g = groups.get(item.resourceGroupName)
+      g.utilSum += item.utilization
+      g.laborSum += item.laborDemand
+      g.count += 1
+    })
+    return Array.from(groups.values()).map(g => ({
+      label: g.label,
+      utilization: g.utilSum / g.count,
+      laborDemand: g.laborSum / g.count
+    }))
+  }
+
+  // 单选资源类型：按月份展开
+  return combined
+    .filter(item => item.resourceGroupName === selectedResourceType.value)
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .map(item => ({
+      label: item.month,
+      utilization: item.utilization,
+      laborDemand: item.laborDemand
+    }))
+})
+
+/** 条形图右侧人员需求轴的最大值（利用率固定以 100% 为满刻度）。 */
+const resourceChartMax = computed(() => ({
+  utilization: 1,
+  labor: Math.max(1, ...resourceTypeChartData.value.map(d => d.laborDemand))
+}))
 const completedJobs = computed(() => jobs.value.filter(job => job.status === 'COMPLETED'))
 const ruleCards = computed(() => {
   const rules = rulesState.value.rules ?? {}
@@ -298,8 +363,12 @@ function formatDateTime(value) {
     .format(new Date(value))
 }
 
+/** 甘特图时间轴刻度：显示完整年月日，便于识别具体日期。 */
 function formatShortDate(date) {
-  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`
+  const y = date.getUTCFullYear()
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(date.getUTCDate()).padStart(2, '0')
+  return `${y}/${m}/${d}`
 }
 
 function shortId(id) {
@@ -493,24 +562,55 @@ onMounted(() => { loadJobs(true); loadRules() })
               </article>
             </div>
 
-            <div v-else-if="activeTab === 'resources'" class="tab-panel resource-grid">
-              <article class="content-card">
-                <div class="card-heading"><div><p class="eyebrow">WORKSHOP LOAD</p><h3>车间资源利用率</h3></div><span>基准产能口径</span></div>
-                <div v-for="item in utilizations" :key="`${item.month}-${item.resourceGroupId}`" class="resource-row">
-                  <div class="resource-name"><strong>{{ item.resourceGroupName }}</strong><small>{{ item.month }} · {{ item.locationName }}</small></div>
-                  <div class="resource-values"><span>{{ formatMoney(item.usedAmount) }} / {{ formatMoney(item.totalCapacity?.amount) }} {{ item.totalCapacity?.unit }}</span><b>{{ formatPercent(item.utilizationRate) }}</b></div>
-                  <div class="wide-meter"><span :class="{ warning: item.utilizationRate > 0.85, danger: item.utilizationRate > 1 }" :style="{ width: `${Math.min(Number(item.utilizationRate) * 100, 100)}%` }"></span></div>
+            <div v-else-if="activeTab === 'resources'" class="tab-panel resource-chart-panel">
+              <article class="content-card resource-chart-card">
+                <div class="card-heading">
+                  <div>
+                    <p class="eyebrow">RESOURCE LOAD & DEMAND</p>
+                    <h3>资源利用率与人员需求</h3>
+                  </div>
+                  <span class="resource-chart-hint">按资源类型分组 · 点击筛选</span>
                 </div>
-                <div v-if="!utilizations.length" class="inline-empty">暂无资源利用率数据</div>
-              </article>
-              <article class="content-card">
-                <div class="card-heading"><div><p class="eyebrow">LABOR DEMAND</p><h3>月均人员需求</h3></div><span>人 / 开工日</span></div>
-                <div v-for="item in laborRows" :key="`${item.month}-${item.locationCode}`" class="labor-row">
-                  <span>{{ item.locationName }}<small>{{ item.month }}</small></span>
-                  <div><i :style="{ width: `${Number(item.demand) / maxLabor * 100}%` }"></i></div>
-                  <b>{{ Number(item.demand).toFixed(2) }}</b>
+
+                <div class="resource-type-filter">
+                  <button type="button" :class="{ active: selectedResourceType === 'all' }" @click="selectedResourceType = 'all'">全部资源</button>
+                  <button v-for="type in resourceTypeOptions" :key="type" type="button" :class="{ active: selectedResourceType === type }" @click="selectedResourceType = type">{{ type }}</button>
                 </div>
-                <div v-if="!laborRows.length" class="inline-empty">暂无人员需求数据</div>
+
+                <div class="resource-chart-legend">
+                  <span class="legend-item util"><i></i>利用率</span>
+                  <span class="legend-item labor"><i></i>人员需求（人 / 开工日）</span>
+                </div>
+
+                <div class="grouped-bar-chart">
+                  <div v-if="!resourceTypeChartData.length" class="inline-empty">暂无资源与人力数据</div>
+                  <template v-else>
+                    <div class="chart-row chart-header">
+                      <div class="chart-label">{{ selectedResourceType === 'all' ? '资源类型' : '月份' }}</div>
+                      <div class="chart-metrics">
+                        <span>利用率</span>
+                        <span>人员需求</span>
+                      </div>
+                    </div>
+                    <div v-for="item in resourceTypeChartData" :key="item.label" class="chart-row">
+                      <div class="chart-label" :title="item.label">{{ item.label }}</div>
+                      <div class="chart-metrics">
+                        <div class="metric-bar">
+                          <div class="bar-track">
+                            <div class="bar util-bar" :style="{ width: `${Math.min(item.utilization * 100, 100)}%` }"></div>
+                          </div>
+                          <span class="metric-value">{{ formatPercent(item.utilization) }}</span>
+                        </div>
+                        <div class="metric-bar">
+                          <div class="bar-track">
+                            <div class="bar labor-bar" :style="{ width: `${Math.min((item.laborDemand / resourceChartMax.labor) * 100, 100)}%` }"></div>
+                          </div>
+                          <span class="metric-value">{{ item.laborDemand.toFixed(2) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
               </article>
             </div>
 

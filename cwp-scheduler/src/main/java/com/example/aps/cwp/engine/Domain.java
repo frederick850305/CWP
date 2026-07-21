@@ -14,9 +14,17 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 排程领域模型。
+ *
+ * <p>负责把接口 JSON 解析成强类型的排程对象。所有金额、工作量均使用 {@link BigDecimal}
+ * 以避免浮点误差；日期统一转换为本地时区的 {@link LocalDate}。该模型是只读的，
+ * 真正的资源占用状态由 {@code ScheduleEngine.Ledger} 维护。</p>
+ */
 final class Domain {
     private Domain() { }
 
+    /** 一次排程求解的全部输入数据。 */
     static final class Model {
         final Map<String, Project> projects = new LinkedHashMap<String, Project>();
         final Map<String, ResourceGroup> groups = new LinkedHashMap<String, ResourceGroup>();
@@ -25,10 +33,13 @@ final class Domain {
         final Map<String, ResourceRate> resourceRates = new HashMap<String, ResourceRate>();
         final List<Cwp> cwps = new ArrayList<Cwp>();
         final CostModel cost = new CostModel();
+        final List<Objective> objectives = new ArrayList<Objective>();
+        boolean objectivesEnabled;
         LocalDate horizonStart;
         LocalDate horizonEnd;
     }
 
+    /** 项目：决定排程的计划完工日，以及是否对完工施加硬约束。 */
     static final class Project {
         String code;
         String name;
@@ -37,6 +48,7 @@ final class Domain {
         boolean finishHardConstraint;
     }
 
+    /** 资源组：可消耗产能(CAPACITY)、占用比例(OCCUPANCY_RATIO)或总装网格(GRID_BLOCK)三种模式之一。 */
     static final class ResourceGroup {
         String id;
         String name;
@@ -55,36 +67,50 @@ final class Domain {
         boolean allowCrossStation;
     }
 
+    /** 占用区域：OCCUPANCY_RATIO 模式下可被按比例占用的具体区域。 */
     static final class Region {
         String id;
         String name;
     }
+    /** 总装阶段：包含若干工位，用于 GRID_BLOCK 模式下的网格排布。 */
     static final class Phase {
         String id;
         String name;
         List<Station> stations = new ArrayList<Station>();
     }
+    /** 工位：总装阶段内的具体排布位置。 */
     static final class Station {
         String id;
         String name;
     }
+    /** 地点人力上限：每个地点每天可投入的最大人数。 */
     static final class LaborLimit {
         String locationCode;
         String locationName;
         int maxPerDay;
     }
+    /** 资源成本单价：产能的基础/加班单价、占用日单价、网格块日单价。 */
     static final class ResourceRate {
         BigDecimal baselineUnitCost = BigDecimal.ZERO;
         BigDecimal overtimeUnitCost = BigDecimal.ZERO;
         BigDecimal occupancyUnitCostPerDay = BigDecimal.ZERO;
         BigDecimal blockUnitCostPerDay = BigDecimal.ZERO;
     }
+    /** 成本模型：是否启用、计划日期偏差单价、锁定违反单价。 */
     static final class CostModel {
         boolean enabled;
         BigDecimal deviationPerDay = BigDecimal.ZERO;
         BigDecimal lockViolationPerDay = BigDecimal.ZERO;
     }
+    /** 优化目标：名称、方向(maximize/minimize)与度量指标(metric)。 */
+    static final class Objective {
+        String code;
+        String name;
+        String direction;
+        String metric;
+    }
 
+    /** 工作包(CWP)：排程的基本单位，含计划窗口、工作量、依赖与工序。 */
     static final class Cwp {
         String code;
         String name;
@@ -106,6 +132,7 @@ final class Domain {
         List<Dependency> dependencies = new ArrayList<Dependency>();
         List<Operation> operations = new ArrayList<Operation>();
     }
+    /** 工序：CWP 工艺路线中的一道操作，绑定资源组并分摊工作量。 */
     static final class Operation {
         String code;
         String name;
@@ -115,11 +142,13 @@ final class Domain {
         BigDecimal workloadPerPersonDay;
         String resourceGroupId;
     }
+    /** 依赖：前驱 CWP 与本 CWP 的约束关系(FS/SS/FF/SF)及时滞。 */
     static final class Dependency {
         String predecessor;
         String relation;
         int lag;
     }
+    /** 总装单体：由若干 CWP 共享，需在总装网格上分配矩形区域。 */
     static final class AssemblyUnit {
         String code;
         String name;
@@ -128,6 +157,7 @@ final class Domain {
         int blockCount;
         String layout;
     }
+    /** 已排程任务：CWP 在某日期窗口下的具体排布结果及冲突标记。 */
     static final class ScheduledTask {
         Cwp cwp;
         LocalDate start;
@@ -138,11 +168,13 @@ final class Domain {
         boolean withConflict;
         List<String> violationCodes = new ArrayList<String>();
     }
+    /** 占用排布：OCCUPANCY_RATIO 模式下选中的区域(工位)。 */
     static final class OccupancyPlacement {
         String resourceGroupId;
         String stationId;
         String stationName;
     }
+    /** 网格排布：GRID_BLOCK 模式下选中的阶段、起始行列与覆盖工位。 */
     static final class GridPlacement {
         String resourceGroupId;
         String phaseId;
@@ -155,6 +187,7 @@ final class Domain {
         List<String> stationNames = new ArrayList<String>();
     }
 
+    /** 将接口 JSON 解析为排程领域模型；同时计算排程时间范围(horizon)。 */
     static Model parse(JsonNode root, ZoneId zone) {
         Model model = new Model();
         for (JsonNode n : root.path("projects")) {
@@ -197,6 +230,14 @@ final class Domain {
             LaborLimit l = new LaborLimit(); l.locationCode = text(n, "locationCode");
             l.locationName = text(n, "locationName"); l.maxPerDay = n.path("maxLaborPerDay").asInt();
             model.laborLimits.put(l.locationCode, l);
+        }
+        JsonNode oo = root.path("optimizationObjectives");
+        model.objectivesEnabled = oo.path("enabled").asBoolean(false);
+        for (JsonNode n : oo.path("objectives")) {
+            Objective o = new Objective();
+            o.code = text(n, "objectiveCode"); o.name = text(n, "objectiveName");
+            o.direction = text(n, "direction"); o.metric = text(n, "metric");
+            model.objectives.add(o);
         }
         JsonNode cost = root.path("costModel"); model.cost.enabled = cost.path("enabled").asBoolean(false);
         model.cost.deviationPerDay = decimal(cost, "scheduleDeviationCostPerDay");
@@ -253,10 +294,14 @@ final class Domain {
         return model;
     }
 
+    /** 将带时区的日期时间字符串转换为本地日期。 */
     static LocalDate date(String value, ZoneId zone) {
         return OffsetDateTime.parse(value).atZoneSameInstant(zone).toLocalDate();
     }
+    /** 将本地日期转换为该时区当天零点的 ISO 字符串。 */
     static String atStart(LocalDate value, ZoneId zone) { return value.atStartOfDay(zone).toOffsetDateTime().toString(); }
+    /** 读取数值字段，缺失或非数值时返回零。 */
     static BigDecimal decimal(JsonNode n, String field) { return n.path(field).isNumber() ? n.path(field).decimalValue() : BigDecimal.ZERO; }
+    /** 读取文本字段，缺失时返回空串。 */
     static String text(JsonNode n, String field) { return n.path(field).asText(""); }
 }

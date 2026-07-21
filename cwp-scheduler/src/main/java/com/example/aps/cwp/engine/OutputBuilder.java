@@ -1,11 +1,8 @@
 package com.example.aps.cwp.engine;
 
-import com.example.aps.cwp.engine.Domain.Cwp;
 import com.example.aps.cwp.engine.Domain.Dependency;
-import com.example.aps.cwp.engine.Domain.GridPlacement;
 import com.example.aps.cwp.engine.Domain.LaborLimit;
 import com.example.aps.cwp.engine.Domain.Model;
-import com.example.aps.cwp.engine.Domain.Operation;
 import com.example.aps.cwp.engine.Domain.Phase;
 import com.example.aps.cwp.engine.Domain.Project;
 import com.example.aps.cwp.engine.Domain.Region;
@@ -33,12 +30,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * 排程结果组装器。
+ *
+ * <p>将排程引擎产出的模型、已排任务与资源台账转换为接口 JSON，包含月度产能利用率、
+ * 人力需求曲线、资源冲突清单、项目关键路径、各视图甘特图以及汇总指标快照。</p>
+ */
 final class OutputBuilder {
     private final ObjectMapper mapper;
     private final ZoneId zone;
 
     OutputBuilder(ObjectMapper mapper, ZoneId zone) { this.mapper = mapper; this.zone = zone; }
 
+    /** 组装完整的排程结果 JSON（各视图与汇总一次性生成）。 */
     ObjectNode build(Model model, Map<String, ScheduledTask> scheduled, Ledger ledger,
                      List<String> warnings, long runtimeMillis) {
         ObjectNode root = mapper.createObjectNode();
@@ -53,6 +57,7 @@ final class OutputBuilder {
         return root;
     }
 
+    /** 月度产能利用率：按资源组与月份汇总已用产能并除以基线。 */
     private ArrayNode utilization(Model model, Ledger ledger) {
         class Row { YearMonth month; ResourceGroup group; BigDecimal used; }
         List<Row> rows = new ArrayList<Row>();
@@ -77,6 +82,7 @@ final class OutputBuilder {
         return out;
     }
 
+    /** 月度人力需求曲线：按地点汇总每日人数并取有效日平均。 */
     private ArrayNode laborCurve(Model model, Ledger ledger) {
         class Sum { int persons; Set<LocalDate> active = new HashSet<LocalDate>(); String name; }
         Map<String, Sum> sums = new LinkedHashMap<String, Sum>();
@@ -100,6 +106,7 @@ final class OutputBuilder {
         return out;
     }
 
+    /** 资源冲突清单：检测产能超额、人力超额、占用超限与网格超限并列出相关 CWP。 */
     private ArrayNode conflicts(Model model, Map<String, ScheduledTask> scheduled, Ledger ledger) {
         ArrayNode out = mapper.createArrayNode(); int sequence = 1;
         for (Map.Entry<String, BigDecimal> e : ledger.capacityByMonth.entrySet()) {
@@ -147,12 +154,14 @@ final class OutputBuilder {
         return out;
     }
 
+    /** 冲突条目的公共字段构造器（冲突编号、类型、日期、资源组、范围）。 */
     private ObjectNode conflictBase(ArrayNode out, int sequence, String type, LocalDate date, ResourceGroup g) {
         ObjectNode n = out.addObject(); n.put("conflictId", "RC-" + date + "-" + g.id + "-" + sequence);
         n.put("conflictType", type); n.put("date", date.toString()); n.put("locationCode", g.locationCode);
         n.put("resourceGroupId", g.id); n.put("resourceGroupName", g.name); n.put("conflictScope", "CWP"); return n;
     }
 
+    /** 项目关键路径：基于最晚完成时间反推零总时差 CWP 并列出关键链。 */
     private ObjectNode criticalPaths(Model model, Map<String, ScheduledTask> scheduled) {
         ObjectNode out = mapper.createObjectNode(); out.put("timeUnit", "day"); ArrayNode projects = out.putArray("projects");
         Map<String, LocalDate> latestEnd = calculateLatestEnds(model, scheduled);
@@ -184,6 +193,7 @@ final class OutputBuilder {
         return out;
     }
 
+    /** 反推每个 CWP 的最晚完成时间：从项目计划完工日沿依赖向后传递约束。 */
     private Map<String, LocalDate> calculateLatestEnds(Model model, Map<String, ScheduledTask> scheduled) {
         Map<String, LocalDate> latest = new HashMap<String, LocalDate>();
         for (ScheduledTask t : scheduled.values()) latest.put(t.cwp.code, model.projects.get(t.cwp.projectCode).plannedEnd);
@@ -203,6 +213,7 @@ final class OutputBuilder {
         return latest;
     }
 
+    /** 预制占用甘特图：按 OCCUPANCY_RATIO 资源组的区域逐行展示占用比例。 */
     private ObjectNode prefabGantt(Model model, Map<String, ScheduledTask> scheduled) {
         ObjectNode out = mapper.createObjectNode(); out.put("timeUnit", "day"); out.put("yAxis", "stationName"); out.put("xAxis", "time");
         ArrayNode rows = out.putArray("rows");
@@ -217,6 +228,7 @@ final class OutputBuilder {
         return out;
     }
 
+    /** 总装网格甘特图：按 GRID_BLOCK 资源的阶段/工位展示单体占用周期。 */
     private ObjectNode assemblyGantt(Model model, Map<String, ScheduledTask> scheduled) {
         ObjectNode out = mapper.createObjectNode(); out.put("timeUnit", "day"); out.put("yAxis", "stationName"); out.put("xAxis", "time");
         ArrayNode rows = out.putArray("rows"); Set<String> emittedUnits = new HashSet<String>();
@@ -235,6 +247,7 @@ final class OutputBuilder {
         return out;
     }
 
+    /** CWP 甘特图：每个工作包的计划/实际起止、分配资源与冲突状态。 */
     private ObjectNode cwpGantt(Model model, Map<String, ScheduledTask> scheduled) {
         ObjectNode out=mapper.createObjectNode();out.put("timeUnit","day");ArrayNode tasks=out.putArray("tasks");
         for(ScheduledTask t:scheduled.values()){
@@ -249,6 +262,7 @@ final class OutputBuilder {
         return out;
     }
 
+    /** 汇总指标：可行性、目标度量快照、总成本、约束违反数与运行耗时。 */
     private ObjectNode summary(Model model, Map<String, ScheduledTask> scheduled, Ledger ledger,
                                ArrayNode utilization, ArrayNode conflicts, List<String> warnings, long runtimeMillis) {
         int hard=0;for(ScheduledTask t:scheduled.values())hard+=t.violationCodes.size(); hard+=conflicts.size();
@@ -258,10 +272,21 @@ final class OutputBuilder {
         ObjectNode out=mapper.createObjectNode();out.put("feasible",hard==0);out.put("algorithmStatus",hard==0?"FEASIBLE_HEURISTIC":"DIAGNOSTIC_BEST_EFFORT");
         ObjectNode metrics=out.putObject("objectiveMetrics");metrics.put("projectPriorityScore",priorityScore);
         metrics.set("avgWorkshopCapacityUtilization",number(avg));metrics.set("totalScheduleCost",number(cost));
+        if(!model.objectives.isEmpty()){
+            ArrayNode objs=out.putArray("optimizationObjectives");int rank=1;
+            for(Domain.Objective o:model.objectives){
+                ObjectNode on=objs.addObject();on.put("rank",rank++);on.put("objectiveCode",o.code);
+                on.put("objectiveName",o.name);on.put("direction",o.direction);on.put("metric",o.metric);
+                if("projectPriorityScore".equals(o.metric))on.put("value",priorityScore);
+                else if("avgWorkshopCapacityUtilization".equals(o.metric))on.set("value",number(avg));
+                else if("totalScheduleCost".equals(o.metric))on.set("value",number(cost));
+            }
+        }
         out.set("totalCost",number(cost));out.put("hardConstraintViolationCount",hard);out.put("runtimeMillis",runtimeMillis);
         ArrayNode ws=out.putArray("warnings");for(String w:warnings)ws.add(w);return out;
     }
 
+    /** 总成本：人力 + 产能基础/加班 + 占用/网格 + 日期偏差 + 锁定违反。 */
     private BigDecimal totalCost(Model model, Map<String,ScheduledTask> scheduled, Ledger ledger){
         BigDecimal total=BigDecimal.ZERO;
         for(Map.Entry<String,Integer>e:ledger.laborByDay.entrySet()){String loc=e.getKey().split("\\|")[0];BigDecimal rate=model.laborRates.get(loc);if(rate!=null)total=total.add(rate.multiply(BigDecimal.valueOf(e.getValue())));}
@@ -276,13 +301,22 @@ final class OutputBuilder {
         return total.setScale(2,RoundingMode.HALF_UP);
     }
 
+    /** 列出在指定月份占用该产能资源组的所有 CWP。 */
     private ArrayNode conflictedCwps(Map<String,ScheduledTask> scheduled,String groupId,YearMonth month){ArrayNode a=mapper.createArrayNode();for(ScheduledTask t:scheduled.values())if(t.operationResource.containsValue(groupId)&&(!YearMonth.from(t.end).isBefore(month)&&!YearMonth.from(t.start).isAfter(month))){ObjectNode n=a.addObject();n.put("cwpCode",t.cwp.code);n.put("cwpName",t.cwp.name);}return a;}
+    /** 列出在指定日期、指定地点有活动的所有 CWP。 */
     private ArrayNode activeCwps(Map<String,ScheduledTask> scheduled,String location,LocalDate date,Model model){ArrayNode a=mapper.createArrayNode();for(ScheduledTask t:scheduled.values())if(!date.isBefore(t.start)&&!date.isAfter(t.end)){boolean found=false;for(String id:t.operationResource.values())if(model.groups.get(id).locationCode.equals(location))found=true;if(found){ObjectNode n=a.addObject();n.put("cwpCode",t.cwp.code);n.put("cwpName",t.cwp.name);}}return a;}
+    /** 仅包含单个 CWP 的冲突关联列表。 */
     private ArrayNode oneCwp(ScheduledTask t){ArrayNode a=mapper.createArrayNode();ObjectNode n=a.addObject();n.put("cwpCode",t.cwp.code);n.put("cwpName",t.cwp.name);return a;}
+    /** 取出属于某项目的全部已排任务。 */
     private List<ScheduledTask> projectTasks(Map<String,ScheduledTask>s,String project){List<ScheduledTask>r=new ArrayList<ScheduledTask>();for(ScheduledTask t:s.values())if(project.equals(t.cwp.projectCode))r.add(t);return r;}
+    /** 取出属于某总装单体的全部已排任务。 */
     private List<ScheduledTask> unitTasks(Map<String,ScheduledTask>s,String unit){List<ScheduledTask>r=new ArrayList<ScheduledTask>();for(ScheduledTask t:s.values())if(t.cwp.unit!=null&&unit.equals(t.cwp.unit.code))r.add(t);return r;}
+    /** 取任务中第一个匹配指定资源模式的资源组。 */
     private ResourceGroup firstGroup(ScheduledTask t,Model m,String mode){for(String id:t.operationResource.values()){ResourceGroup g=m.groups.get(id);if(mode.equals(g.mode))return g;}throw new IllegalStateException("No group for "+mode);}
+    /** 取任务分配资源所在的地点编码。 */
     private String locationFor(ScheduledTask t,Model m){if(t.operationResource.isEmpty())return "";ResourceGroup g=m.groups.get(t.operationResource.values().iterator().next());return g==null?"":g.locationCode;}
+    /** 地点编码到地点名称的解析（先查人力上限，再查资源组）。 */
     private String locationName(Model m,String code){LaborLimit l=m.laborLimits.get(code);if(l!=null)return l.locationName;for(ResourceGroup g:m.groups.values())if(code.equals(g.locationCode))return g.locationName;return code;}
+    /** 将 BigDecimal 转为去尾零的 JSON 数值节点。 */
     private com.fasterxml.jackson.databind.JsonNode number(BigDecimal value){return mapper.getNodeFactory().numberNode(value.stripTrailingZeros());}
 }

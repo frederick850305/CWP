@@ -12,6 +12,7 @@ import com.example.aps.cwp.engine.Domain.Phase;
 import com.example.aps.cwp.engine.Domain.Project;
 import com.example.aps.cwp.engine.Domain.Region;
 import com.example.aps.cwp.engine.Domain.ResourceGroup;
+import com.example.aps.cwp.engine.Domain.ResourceRate;
 import com.example.aps.cwp.engine.Domain.ScheduledTask;
 import com.example.aps.cwp.rules.SolverRules;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -140,6 +141,8 @@ public class ScheduleEngine {
         });
         ScheduledTask best = null;
         BigDecimal bestCost = null;
+        List<BigDecimal> bestVec = null;
+        boolean multiObjective = model.objectivesEnabled && !model.objectives.isEmpty();
         for (LocalDate start : candidates) {
             if (System.currentTimeMillis() >= deadlineMillis) break;
             ScheduledTask candidate = candidate(cwp, start, model);
@@ -147,10 +150,18 @@ public class ScheduleEngine {
             // 在台账副本上试排，避免失败候选污染已经确认的资源占用。
             Ledger trial = ledger.copy();
             if (!place(candidate, model, trial, true, rules)) continue;
-            BigDecimal cost = trial.incrementalCost(candidate);
-            if (best == null || cost.compareTo(bestCost) < 0) {
-                best = candidate; bestCost = cost;
-                if (start.equals(cwp.plannedStart) && cost.compareTo(BigDecimal.ZERO) == 0) break;
+            if (multiObjective) {
+                // 按 optimizationObjectives 定义的词典序逐目标比较候选（高优先级目标先决胜负）。
+                List<BigDecimal> vec = objectiveVector(trial, candidate, model);
+                if (best == null || lexicographicBetter(vec, bestVec) > 0) {
+                    best = candidate; bestVec = vec;
+                }
+            } else {
+                BigDecimal cost = trial.incrementalCost(candidate);
+                if (best == null || cost.compareTo(bestCost) < 0) {
+                    best = candidate; bestCost = cost;
+                    if (start.equals(cwp.plannedStart) && cost.compareTo(BigDecimal.ZERO) == 0) break;
+                }
             }
         }
 
@@ -159,6 +170,28 @@ public class ScheduleEngine {
         return best;
     }
 
+    private List<BigDecimal> objectiveVector(Ledger trial, ScheduledTask cand, Model model) {
+        // 将候选在试排台账上的表现映射为目标向量；MINIMIZE 方向取相反数，使“越大越好”统一。
+        List<BigDecimal> vec = new ArrayList<BigDecimal>();
+        for (Domain.Objective o : model.objectives) {
+            BigDecimal v;
+            if ("projectPriorityScore".equals(o.metric)) v = BigDecimal.valueOf(trial.priorityContribution(cand, model));
+            else if ("avgWorkshopCapacityUtilization".equals(o.metric)) v = trial.avgUtilization();
+            else if ("totalScheduleCost".equals(o.metric)) v = trial.costOf(cand, model);
+            else v = BigDecimal.ZERO;
+            if (o.direction != null && o.direction.trim().equalsIgnoreCase("minimize")) v = v.negate();
+            vec.add(v);
+        }
+        return vec;
+    }
+
+    private static int lexicographicBetter(List<BigDecimal> a, List<BigDecimal> b) {
+        int n = Math.min(a.size(), b.size());
+        for (int i = 0; i < n; i++) { int c = a.get(i).compareTo(b.get(i)); if (c != 0) return c; }
+        return Integer.compare(a.size(), b.size());
+    }
+
+    /** 构造一个以 start 为起点的候选任务（含工序到资源组的绑定）。 */
     private ScheduledTask candidate(Cwp cwp, LocalDate start, Model model) {
         ScheduledTask task = new ScheduledTask(); task.cwp = cwp; task.start = start;
         task.end = start.plusDays(cwp.duration - 1L);
@@ -166,6 +199,7 @@ public class ScheduleEngine {
         return task;
     }
 
+    /** 将候选任务实际落位到台账：选资源(含替代)、校验人力与占用，并登记占用。strict=false 时仅记录冲突不拒绝。 */
     private boolean place(ScheduledTask task, Model model, Ledger ledger, boolean strict, SolverRules rules) {
         Map<String, String> chosen = new LinkedHashMap<String, String>();
         for (Operation op : task.cwp.operations) {
@@ -209,6 +243,7 @@ public class ScheduleEngine {
         return true;
     }
 
+    /** 为总装单体分配阶段、工位与网格区域（CWP 日期确定后执行）。 */
     private void allocateAssemblyUnits(Model model, Map<String, ScheduledTask> scheduled, Ledger ledger) {
         // 同一单体下的多个 CWP 共用一块总装网格，占用周期取这些 CWP 的最早开始至最晚结束。
         Map<String, List<ScheduledTask>> units = new LinkedHashMap<String, List<ScheduledTask>>();
@@ -237,6 +272,7 @@ public class ScheduleEngine {
         }
     }
 
+    /** 复核工期与依赖约束，对不满足者标记冲突代码。 */
     private void applyTemporalViolations(Model model, Map<String, ScheduledTask> scheduled, Map<String, Cwp> cwps) {
         for (ScheduledTask task : scheduled.values()) {
             Project project = model.projects.get(task.cwp.projectCode);
@@ -248,6 +284,7 @@ public class ScheduleEngine {
         }
     }
 
+    /** 根据前置任务的排程结果，将初始开始日顺延到满足所有依赖约束的最早日期。 */
     private LocalDate dependencyAdjustedStart(Cwp cwp, LocalDate initial,
                                               Map<String, ScheduledTask> scheduled, Map<String, Cwp> cwpByCode) {
         LocalDate result = initial;
@@ -272,6 +309,7 @@ public class ScheduleEngine {
         return !succ.end.isBefore(pred.start.plusDays(d.lag));
     }
 
+    /** 计算任务排程顺序：依赖层级优先，再按锁定/优先级/计划日排序。 */
     private List<Cwp> topologicalOrder(List<Cwp> all, Map<String, Cwp> byCode,
                                        final Set<String> locked, final SolverRules rules) {
         // depth 表示依赖层级，确保前置 CWP 在其后继任务之前被排入资源台账。
@@ -299,6 +337,7 @@ public class ScheduleEngine {
         return result;
     }
 
+    /** 递归计算 CWP 的依赖深度（最长前置链长度），带缓存避免重复计算。 */
     private int computeDepth(Cwp c, Map<String, Cwp> byCode, Map<String, Integer> cache) {
         Integer existing = cache.get(c.code); if (existing != null) return existing;
         int depth = 0;
@@ -307,6 +346,7 @@ public class ScheduleEngine {
         cache.put(c.code, depth); return depth;
     }
 
+    /** 基于计划日期识别零浮时(计划关键)任务，用于锁定传播。 */
     private Set<String> plannedCriticalTasks(Model model, Map<String, Cwp> byCode) {
         // 从项目计划结束日反向推算每个 CWP 的最晚完成时间；零浮时任务视为计划关键任务。
         Map<String, LocalDate> latestEnd = new HashMap<String, LocalDate>();
@@ -334,6 +374,7 @@ public class ScheduleEngine {
         return critical;
     }
 
+    /** 若关键任务被锁定，则把其全部前置链一并锁定以保稳定。 */
     private Set<String> expandLockedPredecessors(List<Cwp> cwps, Map<String, Cwp> byCode, Set<String> critical) {
         // 若关键任务被锁定，其全部前置链也要一起保持稳定，避免锁定任务因依赖而失效。
         Set<String> result = new LinkedHashSet<String>();
@@ -344,12 +385,14 @@ public class ScheduleEngine {
         return result;
     }
 
+    /** 直接以 isLocked 标记的任务集合作为锁定集合。 */
     private Set<String> explicitlyLocked(List<Cwp> cwps) {
         Set<String> result = new LinkedHashSet<String>();
         for (Cwp cwp : cwps) if (cwp.locked) result.add(cwp.code);
         return result;
     }
 
+    /** 递归收集 CWP 的全部前驱（深度优先）。 */
     private void addPredecessors(Cwp c, Map<String, Cwp> byCode, Set<String> result) {
         for (Dependency d : c.dependencies) {
             Cwp pred = byCode.get(d.predecessor);
@@ -357,14 +400,23 @@ public class ScheduleEngine {
         }
     }
 
+    /** 判断两个资源组是否可互相替代：模式相同且单位兼容。 */
     private boolean compatible(ResourceGroup a, ResourceGroup b) {
         return a.mode.equals(b.mode) && (a.unit.length() == 0 || a.unit.equals(b.unit));
     }
+    /** 将任务标记为带冲突，并记录具体的冲突代码。 */
     private void markForced(ScheduledTask task, String code) {
         task.withConflict = true;
         if (!task.violationCodes.contains(code)) task.violationCodes.add(code);
     }
 
+    /**
+     * 资源占用台账。
+     *
+     * <p>记录四类资源（月产能、每日人力、每日区域占用、总装网格）的已用情况，并提供
+     * 候选可行性校验与确认登记。求解过程中每个候选都先在台账副本上试排，只有被选中的
+     * 最优候选才会写入正式台账，从而避免失败候选污染已确认的资源占用。</p>
+     */
     static final class Ledger {
         final Model model;
         final SolverRules rules;
@@ -375,13 +427,16 @@ public class ScheduleEngine {
         final Map<String, BigDecimal> occupancyByDay = new HashMap<String, BigDecimal>();
         final Map<String, boolean[][]> gridByDay = new HashMap<String, boolean[][]>();
         final List<ScheduledTask> tasks = new ArrayList<ScheduledTask>();
+        // 利用率滚动聚合：sumUtil 为各(资源组,月)利用率之和，utilCount 为计数，用于增量计算平均利用率。
+        BigDecimal sumUtil = BigDecimal.ZERO;
+        int utilCount = 0;
 
         Ledger(Model model, SolverRules rules) { this.model = model; this.rules = rules; }
         Ledger copy() {
             Ledger c = new Ledger(model, rules); c.capacityByMonth.putAll(capacityByMonth);
             c.laborByDay.putAll(laborByDay); c.occupancyByDay.putAll(occupancyByDay);
             for (Map.Entry<String, boolean[][]> e : gridByDay.entrySet()) c.gridByDay.put(e.getKey(), cloneGrid(e.getValue()));
-            c.tasks.addAll(tasks); return c;
+            c.tasks.addAll(tasks); c.sumUtil = sumUtil; c.utilCount = utilCount; return c;
         }
 
         boolean canUseOperation(ScheduledTask task, Operation op, ResourceGroup group, boolean strict) {
@@ -434,8 +489,17 @@ public class ScheduleEngine {
             // 候选确认后，一次性登记产能、人力、区域占用，供后续任务避让。
             for (Operation op : task.cwp.operations) {
                 ResourceGroup g = model.groups.get(task.operationResource.get(op.code));
-                if ("CAPACITY".equals(g.mode)) for (Map.Entry<YearMonth, BigDecimal> e : monthlyWork(op.workload, task.start, task.end).entrySet())
-                    add(capacityByMonth, key(g.id, e.getKey()), e.getValue());
+                if ("CAPACITY".equals(g.mode)) for (Map.Entry<YearMonth, BigDecimal> e : monthlyWork(op.workload, task.start, task.end).entrySet()) {
+                    String k = key(g.id, e.getKey());
+                    BigDecimal old = capacityByMonth.get(k);
+                    if (g.baseline.compareTo(BigDecimal.ZERO) > 0) {
+                        // 利用率增量 = 本次新增工作量 / baseline，与是否已有占用无关；仅首次占用该(资源,月)时计数+1。
+                        BigDecimal rate = e.getValue().divide(g.baseline, 4, RoundingMode.HALF_UP);
+                        if (old == null) utilCount++;
+                        sumUtil = sumUtil.add(rate);
+                    }
+                    add(capacityByMonth, k, e.getValue());
+                }
             }
             for (Map.Entry<String, Integer> e : laborPerLocation(task).entrySet())
                 for (LocalDate d = task.start; !d.isAfter(task.end); d = d.plusDays(1)) add(laborByDay, key(e.getKey(), d), e.getValue());
@@ -501,6 +565,68 @@ public class ScheduleEngine {
             return model.cost.deviationPerDay.multiply(BigDecimal.valueOf(deviation));
         }
 
+        BigDecimal avgUtilization() {
+            if (utilCount == 0) return BigDecimal.ZERO;
+            return sumUtil.divide(BigDecimal.valueOf(utilCount), 4, RoundingMode.HALF_UP);
+        }
+
+        ScheduledTask findTask(String code) {
+            for (ScheduledTask t : tasks) if (t.cwp.code.equals(code)) return t;
+            return null;
+        }
+
+        int priorityContribution(ScheduledTask task, Model model) {
+            // 该候选若能在项目完工约束内、且满足已排前置依赖，则贡献其项目优先级；
+            // 否则视为冲突（贡献为 0），让“项目优先级最高”目标优先选择无冲突位置。
+            Project project = model.projects.get(task.cwp.projectCode);
+            if (project != null && project.finishHardConstraint && task.end.isAfter(project.plannedEnd)) return 0;
+            for (Dependency d : task.cwp.dependencies) {
+                ScheduledTask pred = findTask(d.predecessor);
+                if (pred == null) continue;
+                if (!depSatisfied(pred, task, d)) return 0;
+            }
+            return task.cwp.priority;
+        }
+
+        BigDecimal costOf(ScheduledTask task, Model model) {
+            // 该候选的完整增量成本：日期偏差 + 人力 + 产能加班 + 占用/网格 + 锁定期违反。
+            BigDecimal total = model.cost.deviationPerDay.multiply(BigDecimal.valueOf(Math.abs(ChronoUnit.DAYS.between(task.cwp.plannedStart, task.start))));
+            for (Map.Entry<String, Integer> e : laborPerLocation(task).entrySet()) {
+                BigDecimal rate = model.laborRates.get(e.getKey());
+                if (rate != null) total = total.add(rate.multiply(BigDecimal.valueOf(e.getValue())));
+            }
+            for (Operation op : task.cwp.operations) {
+                ResourceGroup g = model.groups.get(task.operationResource.get(op.code));
+                if (!"CAPACITY".equals(g.mode)) continue;
+                ResourceRate r = model.resourceRates.get(g.id);
+                if (r == null) continue;
+                for (Map.Entry<YearMonth, BigDecimal> e : monthlyWork(op.workload, task.start, task.end).entrySet()) {
+                    BigDecimal normal = e.getValue().min(g.baseline);
+                    BigDecimal overtime = e.getValue().subtract(g.baseline).max(BigDecimal.ZERO);
+                    total = total.add(normal.multiply(r.baselineUnitCost)).add(overtime.multiply(r.overtimeUnitCost));
+                }
+            }
+            long days = task.cwp.duration;
+            if (task.occupancy != null) {
+                ResourceRate r = model.resourceRates.get(task.occupancy.resourceGroupId);
+                if (r != null) total = total.add(task.cwp.occupancyRatio.multiply(BigDecimal.valueOf(days)).multiply(r.occupancyUnitCostPerDay));
+            }
+            if (task.grid != null) {
+                ResourceRate r = model.resourceRates.get(task.grid.resourceGroupId);
+                if (r != null) total = total.add(BigDecimal.valueOf(task.cwp.unit.blockCount).multiply(BigDecimal.valueOf(days)).multiply(r.blockUnitCostPerDay));
+            }
+            if (task.cwp.locked && (!task.start.equals(task.cwp.plannedStart) || !task.end.equals(task.cwp.plannedEnd)))
+                total = total.add(model.cost.lockViolationPerDay);
+            return total.setScale(2, RoundingMode.HALF_UP);
+        }
+
+        private static boolean depSatisfied(ScheduledTask pred, ScheduledTask succ, Dependency d) {
+            if ("FS".equals(d.relation)) return !succ.start.isBefore(pred.end.plusDays(d.lag + 1L));
+            if ("SS".equals(d.relation)) return !succ.start.isBefore(pred.start.plusDays(d.lag));
+            if ("FF".equals(d.relation)) return !succ.end.isBefore(pred.end.plusDays(d.lag));
+            return !succ.end.isBefore(pred.start.plusDays(d.lag));
+        }
+
         static Map<YearMonth, BigDecimal> monthlyWork(BigDecimal workload, LocalDate start, LocalDate end) {
             // 按每月覆盖天数同比例拆分总工作量，最后一个月吸收舍入差额以保证总量守恒。
             Map<YearMonth, Integer> days = new LinkedHashMap<YearMonth, Integer>(); int total = 0;
@@ -523,7 +649,9 @@ public class ScheduleEngine {
         private static void add(Map<String, Integer> map, String key, int amount) {
             Integer old = map.get(key); map.put(key, (old == null ? 0 : old) + amount);
         }
+        /** 用 '|' 拼接复合键（资源组、月份/日期等）。 */
         static String key(Object... parts) { StringBuilder b = new StringBuilder(); for (Object p : parts) { if (b.length() > 0) b.append('|'); b.append(p); } return b.toString(); }
+        /** 深拷贝二维布尔网格（避免副本间共享同一数组）。 */
         private static boolean[][] cloneGrid(boolean[][] source) { boolean[][] copy = new boolean[source.length][]; for (int i=0;i<source.length;i++) copy[i]=source[i].clone(); return copy; }
     }
 }

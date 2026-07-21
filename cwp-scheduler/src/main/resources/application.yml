@@ -1,0 +1,15 @@
+server:
+  port: 8080
+
+cwp:
+  scheduler:
+    worker-threads: 2
+    queue-capacity: 100
+    time-limit-seconds: 60
+    zone-id: Asia/Shanghai
+
+spring:
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false

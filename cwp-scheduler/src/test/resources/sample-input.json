@@ -1,0 +1,680 @@
+{
+	"optimizationObjectives": {
+		"enabled": true,
+		"objectives": [
+			{
+				"objectiveCode": "PROJECT_PRIORITY",
+				"objectiveName": "项目优先级最高",
+				"direction": "maximize",
+				"metric": "projectPriorityScore"
+			},
+			{
+				"objectiveCode": "RESOURCE_UTILIZATION",
+				"objectiveName": "资源利用率最大化",
+				"direction": "maximize",
+				"metric": "avgWorkshopCapacityUtilization"
+			},
+			{
+				"objectiveCode": "TOTAL_COST_MINIMIZATION",
+				"objectiveName": "总成本最小",
+				"direction": "minimize",
+				"metric": "totalScheduleCost"
+			}
+		]
+	},
+	"costModel": {
+		"enabled": true,
+		"sourceMode": "masterData",
+		"description": "总成本由人工成本、资源占用成本和锁定调整成本组成，具体单价由主数据提供。"
+	},
+	"locationLaborConstraints": {
+		"enabled": true,
+		"unit": "person",
+		"timeUnit": "day",
+		"locations": [
+			{
+				"locationCode": "LOC_PREFAB",
+				"locationName": "预制场地",
+				"maxLaborPerDay": 35
+			},
+			{
+				"locationCode": "LOC_ASSEMBLY",
+				"locationName": "总装场地",
+				"maxLaborPerDay": 48
+			}
+		]
+	},
+	"resourceBindingPolicy": {
+		"description": "不单独定义车间规则，所有资源组统一建模并由算法自动分配。",
+		"autoAllocateByResourceGroupId": true,
+		"supportedConsumptionModes": [
+			"CAPACITY",
+			"GRID_BLOCK",
+			"OCCUPANCY_RATIO"
+		],
+		"resourceGroups": [
+			{
+				"resourceGroupId": "RG_PREFAB_AREA_01",
+				"resourceGroupName": "预制装焊场地资源组",
+				"consumptionMode": "OCCUPANCY_RATIO",
+				"substituteResourceGroupIds": [],
+				"locationCode": "LOC_PREFAB",
+				"locationName": "预制场地",
+				"regions": [
+					{
+						"regionId": "PREFAB_PO_01",
+						"regionName": "预舾装1"
+					},
+					{
+						"regionId": "PREFAB_PO_02",
+						"regionName": "预舾装2"
+					},
+					{
+						"regionId": "PREFAB_PO_03",
+						"regionName": "预舾装3"
+					},
+					{
+						"regionId": "PREFAB_PO_04",
+						"regionName": "预舾装4"
+					},
+					{
+						"regionId": "PREFAB_PO_05",
+						"regionName": "预舾装5"
+					},
+					{
+						"regionId": "PREFAB_PO_06",
+						"regionName": "预舾装6"
+					}
+				]
+			},
+			{
+				"resourceGroupId": "RG_ASSEMBLY_STATION",
+				"resourceGroupName": "总装工位资源组",
+				"consumptionMode": "GRID_BLOCK",
+				"substituteResourceGroupIds": [
+					"RG_PRE_ASSEMBLY_STATION"
+				],
+				"locationCode": "LOC_ASSEMBLY",
+				"locationName": "总装场地",
+				"assemblyLayout": {
+					"blockDefinition": {
+						"rows": 2,
+						"cols": 2,
+						"blockCountPerStation": 4,
+						"layout": "2x2"
+					},
+					"allowCrossStation": true,
+					"phases": [
+						{
+							"phaseCode": "ASSEMBLY_PHASE_1",
+							"phaseName": "一期",
+							"stations": [
+								{
+									"stationCode": "A1-S01",
+									"stationName": "工位1"
+								},
+								{
+									"stationCode": "A1-S02",
+									"stationName": "工位2"
+								},
+								{
+									"stationCode": "A1-S03",
+									"stationName": "工位3"
+								},
+								{
+									"stationCode": "A1-S04",
+									"stationName": "工位4"
+								},
+								{
+									"stationCode": "A1-S05",
+									"stationName": "工位5"
+								},
+								{
+									"stationCode": "A1-S06",
+									"stationName": "工位6"
+								},
+								{
+									"stationCode": "A1-S07",
+									"stationName": "工位7"
+								},
+								{
+									"stationCode": "A1-S08",
+									"stationName": "工位8"
+								}
+							]
+						},
+						{
+							"phaseCode": "ASSEMBLY_PHASE_2",
+							"phaseName": "二期",
+							"stations": [
+								{
+									"stationCode": "A2-S01",
+									"stationName": "工位1"
+								},
+								{
+									"stationCode": "A2-S02",
+									"stationName": "工位2"
+								},
+								{
+									"stationCode": "A2-S03",
+									"stationName": "工位3"
+								},
+								{
+									"stationCode": "A2-S04",
+									"stationName": "工位4"
+								},
+								{
+									"stationCode": "A2-S05",
+									"stationName": "工位5"
+								},
+								{
+									"stationCode": "A2-S06",
+									"stationName": "工位6"
+								},
+								{
+									"stationCode": "A2-S07",
+									"stationName": "工位7"
+								},
+								{
+									"stationCode": "A2-S08",
+									"stationName": "工位8"
+								}
+							]
+						}
+					]
+				},
+				"capacity": {
+					"amount": 64,
+					"unit": "小块",
+					"timeUnit": "month"
+				}
+			},
+			{
+				"resourceGroupId": "RG_PRE_ASSEMBLY_STATION",
+				"resourceGroupName": "预总装工位资源组",
+				"consumptionMode": "GRID_BLOCK",
+				"substituteResourceGroupIds": [],
+				"locationCode": "LOC_PRE_ASSEMBLY",
+				"locationName": "预总装场地",
+				"assemblyLayout": {
+					"blockDefinition": {
+						"rows": 2,
+						"cols": 2,
+						"blockCountPerStation": 4,
+						"layout": "2x2"
+					},
+					"allowCrossStation": true,
+					"phases": [
+						{
+							"phaseCode": "PRE_ASSEMBLY_PHASE_1",
+							"phaseName": "一期",
+							"stations": [
+								{
+									"stationCode": "PA1-S01",
+									"stationName": "预总装工位1"
+								},
+								{
+									"stationCode": "PA1-S02",
+									"stationName": "预总装工位2"
+								},
+								{
+									"stationCode": "PA1-S03",
+									"stationName": "预总装工位3"
+								},
+								{
+									"stationCode": "PA1-S04",
+									"stationName": "预总装工位4"
+								}
+							]
+						},
+						{
+							"phaseCode": "PRE_ASSEMBLY_PHASE_2",
+							"phaseName": "二期",
+							"stations": [
+								{
+									"stationCode": "PA2-S01",
+									"stationName": "预总装工位1"
+								},
+								{
+									"stationCode": "PA2-S02",
+									"stationName": "预总装工位2"
+								},
+								{
+									"stationCode": "PA2-S03",
+									"stationName": "预总装工位3"
+								},
+								{
+									"stationCode": "PA2-S04",
+									"stationName": "预总装工位4"
+								}
+							]
+						}
+					]
+				},
+				"capacity": {
+					"amount": 32,
+					"unit": "小块",
+					"timeUnit": "month"
+				}
+			},
+			{
+				"resourceGroupId": "RG_BLAST_DECK_01",
+				"resourceGroupName": "喷砂甲板片资源组",
+				"consumptionMode": "CAPACITY",
+				"substituteResourceGroupIds": [],
+				"locationCode": "LOC_BLAST_DECK",
+				"locationName": "喷砂车间-甲板片",
+				"capacity": {
+					"baselineAmount": 2400,
+					"maxAmount": 2800,
+					"unit": "平方米",
+					"timeUnit": "month"
+				}
+			},
+			{
+				"resourceGroupId": "RG_BLAST_PARTS_01",
+				"resourceGroupName": "喷砂散件资源组",
+				"consumptionMode": "CAPACITY",
+				"substituteResourceGroupIds": [
+					"RG_PREFAB_AREA_01"
+				],
+				"locationCode": "LOC_BLAST_PARTS",
+				"locationName": "喷砂车间-散件",
+				"capacity": {
+					"baselineAmount": 1800,
+					"maxAmount": 2100,
+					"unit": "平方米",
+					"timeUnit": "month"
+				}
+			},
+			{
+				"resourceGroupId": "RG_PIPE_01",
+				"resourceGroupName": "制管资源组",
+				"consumptionMode": "CAPACITY",
+				"substituteResourceGroupIds": [],
+				"locationCode": "LOC_PIPE",
+				"locationName": "制管车间",
+				"capacity": {
+					"baselineAmount": 900,
+					"maxAmount": 1050,
+					"unit": "米",
+					"timeUnit": "month"
+				}
+			},
+			{
+				"resourceGroupId": "RG_PIPING_PREFAB_01",
+				"resourceGroupName": "工艺管线预制资源组",
+				"consumptionMode": "CAPACITY",
+				"substituteResourceGroupIds": [],
+				"locationCode": "LOC_PIPING_PREFAB",
+				"locationName": "工艺管线预制车间",
+				"capacity": {
+					"baselineAmount": 700,
+					"maxAmount": 820,
+					"unit": "米",
+					"timeUnit": "month"
+				}
+			}
+		]
+	},
+	"projects": [
+		{
+			"projectCode": "PRJ-HULL-100",
+			"projectName": "船体分段项目",
+			"plannedEnd": "2025-06-12T00:00:00+08:00",
+			"finishHardConstraint": true
+		},
+		{
+			"projectCode": "PRJ-OFFSHORE-900",
+			"projectName": "海工总装项目",
+			"plannedEnd": "2025-08-20T00:00:00+08:00",
+			"finishHardConstraint": true
+		},
+		{
+			"projectCode": "PRJ-DECK-301",
+			"projectName": "甲板片喷砂项目",
+			"plannedEnd": "2025-06-22T00:00:00+08:00",
+			"finishHardConstraint": true
+		},
+		{
+			"projectCode": "PRJ-PART-320",
+			"projectName": "散件喷砂项目",
+			"plannedEnd": "2025-06-28T00:00:00+08:00",
+			"finishHardConstraint": true
+		},
+		{
+			"projectCode": "PRJ-PIPE-410",
+			"projectName": "制管项目",
+			"plannedEnd": "2025-07-18T00:00:00+08:00",
+			"finishHardConstraint": true
+		},
+		{
+			"projectCode": "PRJ-PIPING-510",
+			"projectName": "工艺管线预制项目",
+			"plannedEnd": "2025-07-25T00:00:00+08:00",
+			"finishHardConstraint": true
+		}
+	],
+	"cwps": [
+		{
+			"cwpCode": "PF1100",
+			"cwpName": "预制分段装焊",
+			"projectCode": "PRJ-HULL-100",
+			"projectName": "船体分段项目",
+			"projectPriority": 4,
+			"plannedStart": "2025-06-01T00:00:00+08:00",
+			"plannedEnd": "2025-06-12T00:00:00+08:00",
+			"isLocked": false,
+			"ratioOccupation": {
+				"occupancyRatio": 1,
+				"occupancyUnit": "ratio",
+				"assignmentMode": "auto",
+				"editable": true
+			},
+			"workload": {
+				"totalAmount": 36,
+				"progress": 0.22,
+				"unit": "吨"
+			},
+			"dependencies": [
+				{
+					"predecessorCwpCode": "PF1000",
+					"relation": "FS",
+					"lag": 0,
+					"lagUnit": "day"
+				}
+			],
+			"processRoute": {
+				"routeCode": "ROUTE-PREFAB-01",
+				"routeName": "预制装焊路线",
+				"operations": [
+					{
+						"opCode": "VOP-PF1100",
+						"opName": "工序",
+						"sequence": 10,
+						"laborNorm": {
+							"workloadPerPersonDay": 0.45,
+							"workloadUnit": "吨",
+							"laborUnit": "工日"
+						},
+						"resourceGroup": {
+							"resourceGroupId": "RG_PREFAB_AREA_01"
+						}
+					}
+				]
+			}
+		},
+		{
+			"cwpCode": "AS2100",
+			"cwpName": "总装主甲板合拢",
+			"projectCode": "PRJ-OFFSHORE-900",
+			"projectName": "海工总装项目",
+			"projectPriority": 5,
+			"plannedStart": "2025-08-01T00:00:00+08:00",
+			"plannedEnd": "2025-08-12T00:00:00+08:00",
+			"isLocked": true,
+			"assemblyUnit": {
+				"unitCode": "UNIT-900-A",
+				"unitName": "单体A",
+				"requiredBlocks": {
+					"rows": 2,
+					"cols": 2,
+					"blockCount": 4,
+					"layout": "2x2"
+				}
+			},
+			"workload": {
+				"totalAmount": 42,
+				"progress": 0.12,
+				"unit": "吨"
+			},
+			"dependencies": [
+				{
+					"predecessorCwpCode": "AS2000",
+					"relation": "FS",
+					"lag": 0,
+					"lagUnit": "day"
+				}
+			],
+			"processRoute": {
+				"routeCode": "ROUTE-ASSEMBLY-01",
+				"routeName": "总装合拢路线",
+				"operations": [
+					{
+						"opCode": "VOP-AS2100",
+						"opName": "工序",
+						"sequence": 10,
+						"laborNorm": {
+							"workloadPerPersonDay": 0.5,
+							"workloadUnit": "吨",
+							"laborUnit": "工日"
+						},
+						"resourceGroup": {
+							"resourceGroupId": "RG_ASSEMBLY_STATION"
+						}
+					}
+				]
+			}
+		},
+		{
+			"cwpCode": "AS2200",
+			"cwpName": "总装舱口围板安装",
+			"projectCode": "PRJ-OFFSHORE-900",
+			"projectName": "海工总装项目",
+			"projectPriority": 5,
+			"plannedStart": "2025-08-08T00:00:00+08:00",
+			"plannedEnd": "2025-08-20T00:00:00+08:00",
+			"isLocked": false,
+			"assemblyUnit": {
+				"unitCode": "UNIT-900-B",
+				"unitName": "单体B",
+				"requiredBlocks": {
+					"rows": 1,
+					"cols": 4,
+					"blockCount": 4,
+					"layout": "1x4"
+				}
+			},
+			"workload": {
+				"totalAmount": 18,
+				"progress": 0.08,
+				"unit": "吨"
+			},
+			"dependencies": [
+				{
+					"predecessorCwpCode": "AS2100",
+					"relation": "SS",
+					"lag": 0,
+					"lagUnit": "day"
+				}
+			],
+			"processRoute": {
+				"routeCode": "ROUTE-ASSEMBLY-02",
+				"routeName": "总装舾装路线",
+				"operations": [
+					{
+						"opCode": "VOP-AS2200",
+						"opName": "工序",
+						"sequence": 10,
+						"laborNorm": {
+							"workloadPerPersonDay": 0.3,
+							"workloadUnit": "吨",
+							"laborUnit": "工日"
+						},
+						"resourceGroup": {
+							"resourceGroupId": "RG_ASSEMBLY_STATION"
+						}
+					}
+				]
+			}
+		},
+		{
+			"cwpCode": "SB3100",
+			"cwpName": "甲板片喷砂处理",
+			"projectCode": "PRJ-DECK-301",
+			"projectName": "甲板片喷砂项目",
+			"projectPriority": 3,
+			"plannedStart": "2025-06-10T00:00:00+08:00",
+			"plannedEnd": "2025-06-22T00:00:00+08:00",
+			"isLocked": false,
+			"workload": {
+				"totalAmount": 1450,
+				"progress": 0.3,
+				"unit": "平方米"
+			},
+			"dependencies": [
+				{
+					"predecessorCwpCode": "SB3000",
+					"relation": "FS",
+					"lag": 0,
+					"lagUnit": "day"
+				}
+			],
+			"processRoute": {
+				"routeCode": "ROUTE-BLAST-DECK-01",
+				"routeName": "甲板片喷砂路线",
+				"operations": [
+					{
+						"opCode": "VOP-SB3100",
+						"opName": "工序",
+						"sequence": 10,
+						"laborNorm": {
+							"workloadPerPersonDay": 55,
+							"workloadUnit": "平方米",
+							"laborUnit": "工日"
+						},
+						"resourceGroup": {
+							"resourceGroupId": "RG_BLAST_DECK_01"
+						}
+					}
+				]
+			}
+		},
+		{
+			"cwpCode": "SB3200",
+			"cwpName": "散件喷砂处理",
+			"projectCode": "PRJ-PART-320",
+			"projectName": "散件喷砂项目",
+			"projectPriority": 2,
+			"plannedStart": "2025-06-15T00:00:00+08:00",
+			"plannedEnd": "2025-06-28T00:00:00+08:00",
+			"isLocked": false,
+			"workload": {
+				"totalAmount": 980,
+				"progress": 0.18,
+				"unit": "平方米"
+			},
+			"dependencies": [
+				{
+					"predecessorCwpCode": "SB3190",
+					"relation": "FS",
+					"lag": 0,
+					"lagUnit": "day"
+				}
+			],
+			"processRoute": {
+				"routeCode": "ROUTE-BLAST-PARTS-01",
+				"routeName": "散件喷砂路线",
+				"operations": [
+					{
+						"opCode": "VOP-SB3200",
+						"opName": "工序",
+						"sequence": 10,
+						"laborNorm": {
+							"workloadPerPersonDay": 48,
+							"workloadUnit": "平方米",
+							"laborUnit": "工日"
+						},
+						"resourceGroup": {
+							"resourceGroupId": "RG_BLAST_PARTS_01"
+						}
+					}
+				]
+			}
+		},
+		{
+			"cwpCode": "PG4100",
+			"cwpName": "制管下料与卷制",
+			"projectCode": "PRJ-PIPE-410",
+			"projectName": "制管项目",
+			"projectPriority": 3,
+			"plannedStart": "2025-07-01T00:00:00+08:00",
+			"plannedEnd": "2025-07-18T00:00:00+08:00",
+			"isLocked": false,
+			"workload": {
+				"totalAmount": 620,
+				"progress": 0.35,
+				"unit": "米"
+			},
+			"dependencies": [
+				{
+					"predecessorCwpCode": "PG4000",
+					"relation": "FS",
+					"lag": 0,
+					"lagUnit": "day"
+				}
+			],
+			"processRoute": {
+				"routeCode": "ROUTE-PIPE-01",
+				"routeName": "制管加工路线",
+				"operations": [
+					{
+						"opCode": "VOP-PG4100",
+						"opName": "工序",
+						"sequence": 10,
+						"laborNorm": {
+							"workloadPerPersonDay": 22,
+							"workloadUnit": "米",
+							"laborUnit": "工日"
+						},
+						"resourceGroup": {
+							"resourceGroupId": "RG_PIPE_01"
+						}
+					}
+				]
+			}
+		},
+		{
+			"cwpCode": "PP5100",
+			"cwpName": "工艺管线预制组焊",
+			"projectCode": "PRJ-PIPING-510",
+			"projectName": "工艺管线预制项目",
+			"projectPriority": 3,
+			"plannedStart": "2025-07-05T00:00:00+08:00",
+			"plannedEnd": "2025-07-25T00:00:00+08:00",
+			"isLocked": false,
+			"workload": {
+				"totalAmount": 480,
+				"progress": 0.27,
+				"unit": "米"
+			},
+			"dependencies": [
+				{
+					"predecessorCwpCode": "PP5000",
+					"relation": "FS",
+					"lag": 0,
+					"lagUnit": "day"
+				}
+			],
+			"processRoute": {
+				"routeCode": "ROUTE-PIPING-PREFAB-01",
+				"routeName": "工艺管线预制路线",
+				"operations": [
+					{
+						"opCode": "VOP-PP5100",
+						"opName": "工序",
+						"sequence": 10,
+						"laborNorm": {
+							"workloadPerPersonDay": 18,
+							"workloadUnit": "米",
+							"laborUnit": "工日"
+						},
+						"resourceGroup": {
+							"resourceGroupId": "RG_PIPING_PREFAB_01"
+						}
+					}
+				]
+			}
+		}
+	]
+}

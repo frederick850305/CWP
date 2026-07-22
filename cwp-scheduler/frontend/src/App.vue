@@ -40,6 +40,26 @@ const laborRows = computed(() => (result.value?.monthlyLaborDemandCurve ?? []).f
   (month.byLocation ?? []).map(row => ({ ...row, month: month.month }))))
 const maxLabor = computed(() => Math.max(1, ...laborRows.value.map(item => Number(item.demand))))
 
+// 甘特图项目筛选
+const selectedProject = ref('all')
+
+/** 甘特图可选项目列表（按 projectCode 去重）。 */
+const projectOptions = computed(() => {
+  const seen = new Map()
+  tasks.value.forEach(task => {
+    if (task.projectCode && !seen.has(task.projectCode)) {
+      seen.set(task.projectCode, task.projectName || task.projectCode)
+    }
+  })
+  return Array.from(seen.entries()).map(([code, name]) => ({ code, name }))
+})
+
+/** 按当前选中项目过滤后的 CWP 任务。 */
+const filteredTasks = computed(() => {
+  if (selectedProject.value === 'all') return tasks.value
+  return tasks.value.filter(task => task.projectCode === selectedProject.value)
+})
+
 // 资源类型筛选与分组条形图数据
 const selectedResourceType = ref('all')
 
@@ -119,8 +139,8 @@ const ruleCards = computed(() => {
 })
 
 const ganttRange = computed(() => {
-  if (!tasks.value.length) return null
-  const dates = tasks.value.flatMap(task => [task.plannedStart, task.plannedEnd, task.scheduledStart, task.scheduledEnd])
+  if (!filteredTasks.value.length) return null
+  const dates = filteredTasks.value.flatMap(task => [task.plannedStart, task.plannedEnd, task.scheduledStart, task.scheduledEnd])
     .filter(Boolean).map(toDay)
   const start = new Date(Math.min(...dates))
   const end = new Date(Math.max(...dates))
@@ -245,6 +265,7 @@ async function openJob(jobId) {
     localStorage.setItem('cwp-last-job-id', status.jobId)
     if (status.status === 'COMPLETED') {
       result.value = await request(`${API}/${status.jobId}/result`)
+      selectedProject.value = 'all'
       activeTab.value = 'overview'
     } else if (status.status === 'FAILED') {
       result.value = null
@@ -538,9 +559,18 @@ onMounted(() => { loadJobs(true); loadRules() })
               <article class="content-card gantt-card">
                 <div class="card-heading">
                   <div><p class="eyebrow">CWP TIMELINE</p><h3>计划与排程对比</h3></div>
-                  <div class="gantt-legend"><span class="planned-key">计划</span><span class="scheduled-key">排程</span></div>
+                  <div class="gantt-controls">
+                    <label class="project-filter">
+                      <span>项目</span>
+                      <select v-model="selectedProject">
+                        <option value="all">全部项目</option>
+                        <option v-for="project in projectOptions" :key="project.code" :value="project.code">{{ project.name }}</option>
+                      </select>
+                    </label>
+                    <div class="gantt-legend"><span class="planned-key">计划</span><span class="scheduled-key">排程</span></div>
+                  </div>
                 </div>
-                <div v-if="tasks.length" class="gantt-scroll">
+                <div v-if="filteredTasks.length" class="gantt-scroll">
                   <div class="gantt-chart">
                     <div class="gantt-header">
                       <div class="gantt-label">CWP / 资源组</div>
@@ -548,7 +578,7 @@ onMounted(() => { loadJobs(true); loadRules() })
                         <span v-for="tick in ganttRange.ticks" :key="tick.label + tick.offset" :style="{ left: `${tick.offset}%` }">{{ tick.label }}</span>
                       </div>
                     </div>
-                    <div v-for="task in tasks" :key="task.cwpCode" class="gantt-row">
+                    <div v-for="task in filteredTasks" :key="task.cwpCode" class="gantt-row">
                       <div class="gantt-label"><strong>{{ task.cwpName }}</strong><small>{{ task.cwpCode }} · {{ task.allocatedResourceGroupId }}</small></div>
                       <div class="gantt-track">
                         <i v-for="tick in ganttRange.ticks" :key="tick.label + tick.offset" :style="{ left: `${tick.offset}%` }"></i>

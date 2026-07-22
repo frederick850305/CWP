@@ -48,6 +48,46 @@ class ScheduleApiTest {
     }
 
     @Test
+    void listsAlgorithmsAndRoutesByCode() throws Exception {
+        // 算法清单接口：应返回 4 个已注册算法。
+        mvc.perform(get("/api/v1/cwp-schedule-jobs/algorithms"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[0].code").value("default"))
+                .andExpect(jsonPath("$[?(@.code == 'priority-first')]").exists())
+                .andExpect(jsonPath("$[?(@.code == 'earliest-start')]").exists())
+                .andExpect(jsonPath("$[?(@.code == 'cost-minimize')]").exists());
+
+        // 方案 B：用 { algorithm, input } 包裹提交，结果应回显所用算法。
+        String body = "{\"algorithm\":\"cost-minimize\",\"input\":" + TestInputs.singleCapacityCwp() + "}";
+        String response = mvc.perform(post("/api/v1/cwp-schedule-jobs")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.algorithm").value("cost-minimize"))
+                .andReturn().getResponse().getContentAsString();
+        String jobId = mapper.readTree(response).path("jobId").asText();
+        ScheduleJob job = service.get(jobId);
+        for (int i = 0; i < 100 && job.getStatus() != JobStatus.COMPLETED; i++) Thread.sleep(10L);
+        assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
+        mvc.perform(get("/api/v1/cwp-schedule-jobs/{jobId}/result", jobId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.algorithm").value("cost-minimize"))
+                .andExpect(jsonPath("$.algorithmDisplayName").exists());
+
+        // 未知算法应回退到默认算法，仍可正常完成。
+        String fallback = "{\"algorithm\":\"unknown-algo\",\"input\":" + TestInputs.singleCapacityCwp() + "}";
+        String fallbackResponse = mvc.perform(post("/api/v1/cwp-schedule-jobs")
+                        .contentType(MediaType.APPLICATION_JSON).content(fallback))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.algorithm").value("default"))
+                .andReturn().getResponse().getContentAsString();
+        String fallbackJobId = mapper.readTree(fallbackResponse).path("jobId").asText();
+        ScheduleJob fallbackJob = service.get(fallbackJobId);
+        for (int i = 0; i < 100 && fallbackJob.getStatus() != JobStatus.COMPLETED; i++) Thread.sleep(10L);
+        assertThat(fallbackJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    }
+
+    @Test
     void returns404And400() throws Exception {
         mvc.perform(get("/api/v1/cwp-schedule-jobs")).andExpect(status().isOk());
         mvc.perform(get("/api/v1/cwp-schedule-jobs/missing")).andExpect(status().isNotFound());

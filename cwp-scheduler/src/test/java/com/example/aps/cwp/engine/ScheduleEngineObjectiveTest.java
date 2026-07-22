@@ -1,6 +1,8 @@
 package com.example.aps.cwp.engine;
 
 import com.example.aps.cwp.SchedulerProperties;
+import com.example.aps.cwp.engine.DefaultHeuristicStrategy;
+import com.example.aps.cwp.engine.HeuristicScheduleEngine;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
@@ -22,11 +24,12 @@ class ScheduleEngineObjectiveTest {
         }
     }
 
-    private ScheduleEngine engine() {
+    private HeuristicScheduleEngine engine() {
         SchedulerProperties props = new SchedulerProperties();
         props.setZoneId("Asia/Shanghai");
         props.setTimeLimitSeconds(60);
-        return new ScheduleEngine(new ObjectMapper(), props);
+        return new HeuristicScheduleEngine(new ObjectMapper(), props,
+                new DefaultHeuristicStrategy(), "default", "默认启发式", "");
     }
 
     private JsonNode solve(JsonNode input) {

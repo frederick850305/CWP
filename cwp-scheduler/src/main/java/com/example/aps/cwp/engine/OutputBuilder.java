@@ -10,7 +10,7 @@ import com.example.aps.cwp.engine.Domain.ResourceGroup;
 import com.example.aps.cwp.engine.Domain.ResourceRate;
 import com.example.aps.cwp.engine.Domain.ScheduledTask;
 import com.example.aps.cwp.engine.Domain.Station;
-import com.example.aps.cwp.engine.ScheduleEngine.Ledger;
+import com.example.aps.cwp.engine.Ledger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -151,7 +151,7 @@ final class OutputBuilder {
                 u.putArray("relatedCwps").add(task.cwp.code); n.set("conflictedCwps", oneCwp(task));
             }
         }
-        // 补齐时间维度与兜底类硬约束：这些标记由 ScheduleEngine 通过 markForced 写入
+        // 补齐时间维度与兜底类硬约束：这些标记由 HeuristicScheduleEngine 通过 markForced 写入
         // violationCodes，但上面只覆盖了 OCCUPANCY_LIMIT / GRID_LIMIT 两种资源台账冲突。
         // 若不在此生成对应条目，就会出现 summary.feasible=false（按 violationCodes 计）而
         // resourceConflictList 为空（按台账超限计）的展示矛盾。

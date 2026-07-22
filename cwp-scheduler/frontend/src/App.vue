@@ -23,6 +23,10 @@ const ruleConversation = ref([
   { role: 'assistant', text: '告诉我你希望怎样调整排程策略。我会先生成结构化变更预览，只有确认后才会生效。' },
 ])
 
+// 排程算法选择与后台路由
+const algorithms = ref([])
+const selectedAlgorithm = ref('default')
+
 const tabs = [
   { id: 'overview', label: '排程总览' },
   { id: 'gantt', label: 'CWP 甘特图' },
@@ -190,6 +194,18 @@ async function loadRules() {
   }
 }
 
+async function loadAlgorithms() {
+  try {
+    algorithms.value = await request(`${API}/algorithms`)
+    // 若当前选中项不在清单中（如后台尚未就绪），回退到首个算法。
+    if (!algorithms.value.some(alg => alg.code === selectedAlgorithm.value)) {
+      selectedAlgorithm.value = algorithms.value[0]?.code || 'default'
+    }
+  } catch (cause) {
+    // 算法清单获取失败时静默回退，不阻断其它功能。
+  }
+}
+
 async function interpretRule(message = ruleMessage.value) {
   const text = message.trim()
   if (!text || ruleBusy.value) return
@@ -266,6 +282,7 @@ async function openJob(jobId) {
     if (status.status === 'COMPLETED') {
       result.value = await request(`${API}/${status.jobId}/result`)
       selectedProject.value = 'all'
+      if (status.algorithm) selectedAlgorithm.value = status.algorithm
       activeTab.value = 'overview'
     } else if (status.status === 'FAILED') {
       result.value = null
@@ -304,7 +321,7 @@ async function submitInput(input, sourceName) {
     const job = await request(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
+      body: JSON.stringify({ algorithm: selectedAlgorithm.value, input }),
     })
     currentJob.value = job
     jobQuery.value = job.jobId
@@ -406,7 +423,7 @@ function conflictType(type) {
            RESOURCE: '资源不足', DEPENDENCY: '依赖违反' }[type] ?? type
 }
 
-onMounted(() => { loadJobs(true); loadRules() })
+onMounted(() => { loadJobs(true); loadRules(); loadAlgorithms() })
 </script>
 
 <template>
@@ -440,6 +457,12 @@ onMounted(() => { loadJobs(true); loadRules() })
           <p class="hero-description">集中查看计划偏差、资源负荷、人力需求与约束冲突，让每个 CWP 的安排都有据可查。</p>
         </div>
         <div class="hero-actions">
+          <label class="project-filter algorithm-filter">
+            <span>算法</span>
+            <select v-model="selectedAlgorithm" :disabled="loading" title="选择排程算法，提交后将调用后台对应算法">
+              <option v-for="alg in algorithms" :key="alg.code" :value="alg.code" :title="alg.description">{{ alg.displayName }}</option>
+            </select>
+          </label>
           <button class="primary-button" type="button" @click="runSample" :disabled="loading">
             <span class="button-icon">▶</span>{{ loading ? '正在排程…' : '运行示例排程' }}
           </button>
@@ -493,7 +516,7 @@ onMounted(() => { loadJobs(true); loadRules() })
                     <i></i>{{ summary.feasible ? '方案可行' : '存在硬约束冲突' }}
                   </span>
                 </div>
-                <p>任务 {{ currentJob?.jobId }} · 完成于 {{ formatDateTime(currentJob?.completedAt) }}</p>
+                <p>任务 {{ currentJob?.jobId }} · 算法 {{ result.algorithmDisplayName || currentJob?.algorithm || '默认启发式' }} · 完成于 {{ formatDateTime(currentJob?.completedAt) }}</p>
               </div>
               <button class="download-button" type="button" @click="downloadResult">↓ 导出结果 JSON</button>
             </div>

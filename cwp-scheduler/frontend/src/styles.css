@@ -50,6 +50,10 @@ main { padding-bottom: 56px; }
 .hero h1 em { color: #60ddc8; font-style: normal; }
 .hero-description { max-width: 620px; margin: 20px 0 0; color: #a9bcc2; font-size: 14px; line-height: 1.8; }
 .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; padding-bottom: 4px; }
+.hero-actions .algorithm-filter { margin-right: 4px; background: rgba(255,255,255,.06); padding: 6px 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; }
+.hero-actions .algorithm-filter span { color: #b9c6cc; }
+.hero-actions .algorithm-filter select { color: #eef3f4; background-color: #1c2a30; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23b9c6cc' d='M0 1l5 4 5-4H0z'/%3E%3C/svg%3E"); border-color: rgba(255,255,255,.18); min-width: 120px; }
+.hero-actions .algorithm-filter select:focus { border-color: #13a58d; box-shadow: 0 0 0 3px rgba(19,165,141,.18); }
 .primary-button, .secondary-button, .download-button { min-height: 42px; padding: 0 18px; border-radius: 5px; font-size: 13px; font-weight: 600; }
 .primary-button { border: 1px solid var(--teal); background: var(--teal); color: white; box-shadow: 0 8px 24px rgba(0,167,142,.18); }
 .primary-button:hover { background: #00947f; }

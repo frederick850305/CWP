@@ -136,9 +136,18 @@ final class OutputBuilder {
         for (ScheduledTask task : scheduled.values()) {
             if (task.violationCodes.contains("OCCUPANCY_LIMIT")) {
                 ResourceGroup g = firstGroup(task, model, "OCCUPANCY_RATIO");
+                // 占用判定以“去重后的独立区域数”为容量（每个区域容量=1.0 ratio），
+                // 需求量为本任务与同组其它已排任务在窗口内“并发占用比例峰值”，而非静态的单个任务 ratio。
+                long distinctRegions = distinctRegionCount(g);
+                OccupancyPeak peak = occupancyPeak(model, scheduled, task, g);
                 ObjectNode n = conflictBase(out, sequence++, "OCCUPANCY", task.start, g);
-                n.put("availableAmount", g.regions.size()); n.set("requiredAmount", number(task.cwp.occupancyRatio));
-                n.set("shortageAmount", number(task.cwp.occupancyRatio)); n.put("unit", "ratio");
+                n.set("availableAmount", number(BigDecimal.valueOf(distinctRegions)));
+                n.set("requiredAmount", number(peak.peak));
+                n.set("shortageAmount", number(peak.peak.subtract(BigDecimal.valueOf(distinctRegions)).max(BigDecimal.ZERO)));
+                n.put("unit", "ratio");
+                n.put("peakDate", peak.date);
+                ArrayNode concurrent = n.putArray("concurrentCwps");
+                for (String c : peak.cwps) concurrent.add(c);
                 n.set("conflictedCwps", oneCwp(task));
             }
             if (task.violationCodes.contains("GRID_LIMIT")) {
@@ -385,6 +394,25 @@ final class OutputBuilder {
     private ResourceGroup firstGroup(ScheduledTask t,Model m,String mode){for(String id:t.operationResource.values()){ResourceGroup g=m.groups.get(id);if(mode.equals(g.mode))return g;}throw new IllegalStateException("No group for "+mode);}
     /** 取任务分配资源所在的地点编码。 */
     private String locationFor(ScheduledTask t,Model m){if(t.operationResource.isEmpty())return "";ResourceGroup g=m.groups.get(t.operationResource.values().iterator().next());return g==null?"":g.locationCode;}
+    /** 资源组中按 regionId 去重后的独立区域数（与引擎判定口径一致）。 */
+    private long distinctRegionCount(ResourceGroup g){Set<String> ids=new HashSet<String>();for(Region r:g.regions)ids.add(r.id);return ids.size();}
+    /** OCCUPANCY_RATIO 并发占用峰值：本任务与同组其它已排任务在窗口内每天占用比例之和的最大值。 */
+    private OccupancyPeak occupancyPeak(Model model,Map<String,ScheduledTask>scheduled,ScheduledTask task,ResourceGroup group){
+        OccupancyPeak result=new OccupancyPeak();
+        for(LocalDate d=task.start;!d.isAfter(task.end);d=d.plusDays(1)){
+            BigDecimal demand=task.cwp.occupancyRatio; List<String> dayCwps=new ArrayList<String>(); dayCwps.add(task.cwp.code);
+            for(ScheduledTask o:scheduled.values()){
+                if(o==task||o.occupancy==null)continue;
+                if(!group.id.equals(o.occupancy.resourceGroupId))continue;
+                if(d.isBefore(o.start)||d.isAfter(o.end))continue;
+                demand=demand.add(o.cwp.occupancyRatio); dayCwps.add(o.cwp.code);
+            }
+            if(demand.compareTo(result.peak)>0){result.peak=demand;result.date=d.toString();result.cwps=dayCwps;}
+        }
+        return result;
+    }
+    /** 并发占用峰值结果载体。 */
+    private static final class OccupancyPeak{BigDecimal peak=BigDecimal.ZERO;String date;List<String>cwps=new ArrayList<String>();}
     /** 地点编码到地点名称的解析（先查人力上限，再查资源组）。 */
     private String locationName(Model m,String code){LaborLimit l=m.laborLimits.get(code);if(l!=null)return l.locationName;for(ResourceGroup g:m.groups.values())if(code.equals(g.locationCode))return g.locationName;return code;}
     /** 将 BigDecimal 转为去尾零的 JSON 数值节点。 */

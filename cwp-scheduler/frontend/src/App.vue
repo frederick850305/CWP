@@ -775,6 +775,8 @@ onMounted(() => { loadJobs(true); loadRules(); loadAlgorithms() })
                       <td><span class="type-badge">{{ conflictType(item.conflictType) }}</span></td><td>{{ item.date }}</td><td><strong>{{ item.resourceGroupName }}</strong><small>{{ item.resourceGroupId }}</small></td>
                       <td>{{ item.availableAmount }} {{ item.unit }}</td><td>{{ item.requiredAmount }} {{ item.unit }}</td><td class="shortage">{{ item.shortageAmount }} {{ item.unit }}</td>
                       <td>{{ (item.conflictedCwps ?? []).map(cwp => cwp.cwpCode ?? cwp).join('、') || '—' }}</td>
+                    </tr><tr v-if="item.concurrentCwps && item.concurrentCwps.length" class="conflict-detail">
+                      <td colspan="7"><span class="detail-label">峰值日 {{ item.peakDate }} · 同时占用区域数 {{ item.concurrentCwps.length }} · 竞争 CWP：</span>{{ item.concurrentCwps.join('、') }}</td>
                     </tr></tbody>
                   </table>
                 </div>

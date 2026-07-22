@@ -183,12 +183,13 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
         for (Operation op : task.cwp.operations) {
             ResourceGroup primary = model.groups.get(op.resourceGroupId);
 
-            // 先尝试主资源；主资源不足时，按配置顺序尝试单位兼容的替代资源（允许跨模式，如 CAPACITY→OCCUPANCY_RATIO）。
+            // 严格按 JSON 中声明的 substituteResourceGroupIds 作为替代资源候选（按声明顺序尝试）。
+            // 不再使用“同单位即可跨模式替代”的通用判定：只有显式配置为替代组的资源才被允许替代。
             List<ResourceGroup> choices = new ArrayList<ResourceGroup>(); choices.add(primary);
             if (rules.isAllowResourceSubstitution()) {
                 for (String sid : primary.substitutes) {
                     ResourceGroup substitute = model.groups.get(sid);
-                    if (substitute != null && compatible(primary, substitute)) choices.add(substitute);
+                    if (substitute != null) choices.add(substitute);
                 }
             }
             ResourceGroup selected = null;
@@ -372,21 +373,6 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
         }
     }
 
-    /**
-     * 判断两个资源组是否可互相替代。
-     * 放开为“跨模式替代”：只要工作量单位兼容即可，不再要求模式相同。
-     * 空单位视为通配（用于 OCCUPANCY_RATIO 这类不按量计、而是按占用比例吸收工作的资源组），
-     * 从而允许例如散件喷砂(CAPACITY)回退到预制装焊区(OCCUPANCY_RATIO)。
-     */
-    private boolean compatible(ResourceGroup a, ResourceGroup b) {
-        return unitCompatible(a, b);
-    }
-
-    /** 单位兼容：任一端为空单位（通配）则视为兼容；否则必须相等。 */
-    private boolean unitCompatible(ResourceGroup a, ResourceGroup b) {
-        if (a.unit.length() == 0 || b.unit.length() == 0) return true;
-        return a.unit.equals(b.unit);
-    }
     /** 将任务标记为带冲突，并记录具体的冲突代码。 */
     private void markForced(ScheduledTask task, String code) {
         task.withConflict = true;

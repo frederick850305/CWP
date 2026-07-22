@@ -70,12 +70,11 @@ public class InputValidator {
                 }
             }
             for (JsonNode substituteId : group.path("substituteResourceGroupIds")) {
+                // 替代关系严格以 JSON 声明的 substituteResourceGroupIds 为准，不再以
+                // consumptionMode / unit 是否兼容来忽略声明（即不再做“同单位即可跨模式替代”的判定）。
                 JsonNode substitute = groups.get(substituteId.asText());
                 if (substitute == null) {
                     errors.add(id + " references unknown substitute resource group " + substituteId.asText());
-                } else if (!compatible(group, substitute)) {
-                    warnings.add("Substitution " + id + " -> " + substituteId.asText()
-                            + " is ignored because consumption mode or unit is incompatible");
                 }
             }
         }
@@ -209,11 +208,6 @@ public class InputValidator {
         }
         state.put(code, 2);
         return false;
-    }
-
-    private boolean compatible(JsonNode a, JsonNode b) {
-        if (!text(a, "consumptionMode").equals(text(b, "consumptionMode"))) return false;
-        return text(a.path("capacity"), "unit").equals(text(b.path("capacity"), "unit"));
     }
 
     private Map<String, JsonNode> index(JsonNode array, String field, String label, List<String> errors) {

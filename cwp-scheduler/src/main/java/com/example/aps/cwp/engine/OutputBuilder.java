@@ -115,8 +115,9 @@ final class OutputBuilder {
                     : g.maximum.multiply(ledger.rules.getCapacitySafetyFactor());
             if (g == null || !"CAPACITY".equals(g.mode) || e.getValue().compareTo(effectiveMaximum) <= 0) continue;
             YearMonth month = YearMonth.parse(p[1]); ObjectNode n = conflictBase(out, sequence++, "CAPACITY", month.atEndOfMonth(), g);
-            n.set("availableAmount", number(effectiveMaximum)); n.set("requiredAmount", number(e.getValue()));
-            n.set("shortageAmount", number(e.getValue().subtract(effectiveMaximum))); n.put("unit", g.unit);
+            // 需求量与缺口均按“取上限保留整数”口径：不足一个单位也向上取整，与人力需求计算保持一致。
+            n.set("availableAmount", number(effectiveMaximum)); n.set("requiredAmount", ceil(e.getValue()));
+            n.set("shortageAmount", ceil(e.getValue().subtract(effectiveMaximum))); n.put("unit", g.unit);
             n.set("conflictedCwps", conflictedCwps(scheduled, g.id, month));
         }
         for (Map.Entry<String, Integer> e : ledger.laborByDay.entrySet()) {
@@ -127,8 +128,9 @@ final class OutputBuilder {
             ObjectNode n = out.addObject(); n.put("conflictId", "RC-" + (sequence++)); n.put("conflictType", "LABOR");
             n.put("date", p[1]); n.put("locationCode", p[0]); n.put("resourceGroupId", "LABOR@" + p[0]);
             n.put("resourceGroupName", limit.locationName + "人力"); n.put("conflictScope", "CWP");
-            n.put("availableAmount", effectiveMaximum); n.put("requiredAmount", e.getValue());
-            n.put("shortageAmount", e.getValue() - effectiveMaximum); n.put("unit", "person");
+            // 需求量与缺口一律向上取整（与产能一致），避免小数份额被低估。
+            n.put("availableAmount", effectiveMaximum); n.put("requiredAmount", ceil(BigDecimal.valueOf(e.getValue())).asInt());
+            n.put("shortageAmount", ceil(BigDecimal.valueOf(e.getValue() - effectiveMaximum)).asInt()); n.put("unit", "person");
             n.set("conflictedCwps", activeCwps(scheduled, p[0], LocalDate.parse(p[1]), model));
         }
         for (ScheduledTask task : scheduled.values()) {
@@ -354,4 +356,12 @@ final class OutputBuilder {
     private String locationName(Model m,String code){LaborLimit l=m.laborLimits.get(code);if(l!=null)return l.locationName;for(ResourceGroup g:m.groups.values())if(code.equals(g.locationCode))return g.locationName;return code;}
     /** 将 BigDecimal 转为去尾零的 JSON 数值节点。 */
     private com.fasterxml.jackson.databind.JsonNode number(BigDecimal value){return mapper.getNodeFactory().numberNode(value.stripTrailingZeros());}
+
+    /**
+     * 取上限保留整数：不足一个单位也向上取整（如 10.2 → 11），用于资源冲突清单的
+     * 需求量与缺口，与人力需求计算中“人数向上取整”的口径保持一致。
+     */
+    private com.fasterxml.jackson.databind.JsonNode ceil(BigDecimal value){
+        return mapper.getNodeFactory().numberNode(value.setScale(0, RoundingMode.CEILING));
+    }
 }

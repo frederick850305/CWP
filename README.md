@@ -9,7 +9,7 @@
 ## 技术栈
 
 - **后端**：Spring Boot 2.7.18（Java 8），Maven 构建，纯 Java 启发式排程引擎
-- **前端**：Vue 3 + Vite 排程驾驶舱（甘特图、资源利用率、冲突诊断、中文规则助手）
+- **前端**：Vue 3 + Vite 排程驾驶舱（甘特图、资源利用率、冲突诊断、中文规则助手）；需 Node.js 20+（Vite 7 要求）
 - **测试**：JUnit 5 + Spring Boot Test
 
 ## 目录结构
@@ -26,6 +26,14 @@ CWP/
 └── AGENTS.md             # 协作 / 代理上下文说明
 ```
 
+## 环境要求
+
+- **JDK 8**（即 Java 1.8）：后端运行与编译所需
+- **Maven**：无需预装，仓库已内置 Maven Wrapper，使用 `./mvnw`（首次运行自动下载 Maven 3.9.16）
+- **Node.js 20+ 与 npm**：仅前端开发模式（`npm run dev`）需要；Vite 7 要求 Node 20.19+ 或 22.12+
+
+> 仅运行打包后的后端静态页面（`java -jar ...jar`）不需要 Node.js。
+
 ## 快速开始（源码开发模式，推荐）
 
 > 以下命令在**仓库根目录 `CWP/`**（即本文件所在目录）下执行。
@@ -35,7 +43,7 @@ CWP/
 ```bash
 # 终端 1：后端源码运行（改 Java 保存后 devtools 自动重启，无需打包）
 cd cwp-scheduler
-mvn spring-boot:run
+./mvnw spring-boot:run        # 也可用系统 mvn；仓库已内置 Maven Wrapper
 
 # 终端 2：前端热更新（改代码即时生效）
 cd cwp-scheduler/frontend

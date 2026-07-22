@@ -60,8 +60,83 @@ const projectOptions = computed(() => {
 
 /** 按当前选中项目过滤后的 CWP 任务。 */
 const filteredTasks = computed(() => {
-  if (selectedProject.value === 'all') return tasks.value
-  return tasks.value.filter(task => task.projectCode === selectedProject.value)
+  const rows = selectedProject.value === 'all'
+    ? tasks.value
+    : tasks.value.filter(task => task.projectCode === selectedProject.value)
+  // 与常见项目甘特图一致：先按项目分组，再按实际开工时间排列，使依赖链呈阶梯状展开。
+  return [...rows].sort((left, right) =>
+    (left.projectCode || '').localeCompare(right.projectCode || '')
+    || toDay(left.scheduledStart) - toDay(right.scheduledStart)
+    || toDay(left.scheduledEnd) - toDay(right.scheduledEnd)
+    || left.cwpCode.localeCompare(right.cwpCode))
+})
+
+/** 甘特图仅展示关键路径上的 FS（完成→开始）依赖。 */
+const dependencyLinks = computed(() => (result.value?.cwpGanttOutput?.dependencyLinks ?? [])
+  .filter(link => link.critical && (link.relation || '').toUpperCase() === 'FS'))
+const scheduledBarCenterRatio = (27 + 17 / 2) / 58
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
+/**
+ * 把依赖连线换算为甘特图坐标系下的像素百分比端点，供 SVG 覆盖层绘制。
+ * x 为相对右侧 track 宽度的百分比（与 bar 的 left/width 同源），y 为相对行区域的百分比。
+ * 仅绘制前驱与后继都存在于当前筛选集合中的连线（跨项目的依赖随筛选隐藏）。
+ */
+const ganttDependencyLines = computed(() => {
+  const links = dependencyLinks.value
+  const rows = filteredTasks.value
+  if (!rows.length) return []
+  const index = new Map(rows.map((t, i) => [t.cwpCode, i]))
+  const N = rows.length
+  const out = []
+  for (const link of links) {
+    const fi = index.get(link.fromCwpCode)
+    const ti = index.get(link.toCwpCode)
+    if (fi == null || ti == null) continue
+    const fb = ganttStyle(rows[fi], 'scheduled')
+    const tb = ganttStyle(rows[ti], 'scheduled')
+    const fromLeft = parseFloat(fb.left)
+    const fromRight = fromLeft + parseFloat(fb.width)
+    const toLeft = parseFloat(tb.left)
+    if (![fromLeft, fromRight, toLeft].every(Number.isFinite)) continue
+
+    // 当前仅展示 FS：起点固定在前置任务右侧，箭头固定从左向右指向后置任务左侧外缘。
+    const x1 = fromRight
+    const x2 = toLeft
+    const y1 = (fi + scheduledBarCenterRatio) / N * 100
+    const y2 = (ti + scheduledBarCenterRatio) / N * 100
+
+    // 箭头尖端与色块保留极小间隙，视觉上位于块外，但方向明确指向后置任务。
+    const arrowX = clamp(x2 - 0.28, 0.45, 99.45)
+    const segments = []
+    if (arrowX > x1 + 1.5) {
+      // 标准阶梯式 FS：右出、下折、向右进入后置任务。
+      const bendX = x1 + Math.min(1.2, (arrowX - x1) / 2)
+      segments.push(
+        { x1, y1, x2: bendX, y2: y1 },
+        { x1: bendX, y1, x2: bendX, y2 },
+        { x1: bendX, y1: y2, x2: arrowX, y2, arrow: true },
+      )
+    } else {
+      // 资源冲突可能让后置任务没有排到前置任务右侧。此时沿行边界外绕，
+      // 最后一段仍从左向右进入后置任务，避免反向箭头和穿过任务色块。
+      const escapeX = clamp(Math.max(x1, x2) + 1.15, 0.55, 99.45)
+      const approachX = clamp(x2 - 1.25, 0.45, 98.5)
+      const detourY = (ti + (ti > fi ? 0.06 : 0.94)) / N * 100
+      segments.push(
+        { x1, y1, x2: escapeX, y2: y1 },
+        { x1: escapeX, y1, x2: escapeX, y2: detourY },
+        { x1: escapeX, y1: detourY, x2: approachX, y2: detourY },
+        { x1: approachX, y1: detourY, x2: approachX, y2 },
+        { x1: approachX, y1: y2, x2: arrowX, y2, arrow: true },
+      )
+    }
+    out.push({ ...link, segments })
+  }
+  return out
 })
 
 // 资源类型筛选与分组条形图数据
@@ -590,7 +665,11 @@ onMounted(() => { loadJobs(true); loadRules(); loadAlgorithms() })
                         <option v-for="project in projectOptions" :key="project.code" :value="project.code">{{ project.name }}</option>
                       </select>
                     </label>
-                    <div class="gantt-legend"><span class="planned-key">计划</span><span class="scheduled-key">排程</span></div>
+                    <div class="gantt-legend">
+                      <span class="planned-key">计划</span>
+                      <span class="scheduled-key">排程</span>
+                      <span class="dep-key">关键路径（FS）</span>
+                    </div>
                   </div>
                 </div>
                 <div v-if="filteredTasks.length" class="gantt-scroll">
@@ -601,15 +680,31 @@ onMounted(() => { loadJobs(true); loadRules(); loadAlgorithms() })
                         <span v-for="tick in ganttRange.ticks" :key="tick.label + tick.offset" :style="{ left: `${tick.offset}%` }">{{ tick.label }}</span>
                       </div>
                     </div>
-                    <div v-for="task in filteredTasks" :key="task.cwpCode" class="gantt-row">
-                      <div class="gantt-label"><strong>{{ task.cwpName }}</strong><small>{{ task.cwpCode }} · {{ task.allocatedResourceGroupId }}</small></div>
-                      <div class="gantt-track">
-                        <i v-for="tick in ganttRange.ticks" :key="tick.label + tick.offset" :style="{ left: `${tick.offset}%` }"></i>
-                        <span class="planned-bar" :style="ganttStyle(task, 'planned')"></span>
-                        <span class="scheduled-bar" :class="{ conflicted: task.status !== 'scheduled' }" :style="ganttStyle(task, 'scheduled')">
-                          <b>{{ task.cwpCode }}</b>
-                        </span>
+                    <div class="gantt-body">
+                      <div v-for="task in filteredTasks" :key="task.cwpCode" class="gantt-row" :class="{ critical: task.isCritical }">
+                        <div class="gantt-label"><strong>{{ task.cwpName }}</strong><small>{{ task.cwpCode }} · {{ task.allocatedResourceGroupId }}</small></div>
+                        <div class="gantt-track">
+                          <i v-for="tick in ganttRange.ticks" :key="tick.label + tick.offset" :style="{ left: `${tick.offset}%` }"></i>
+                          <span class="planned-bar" :style="ganttStyle(task, 'planned')"></span>
+                          <span class="scheduled-bar" :class="{ conflicted: task.status !== 'scheduled' }" :style="ganttStyle(task, 'scheduled')">
+                            <b>{{ task.cwpCode }}</b>
+                          </span>
+                        </div>
                       </div>
+                      <svg class="gantt-deps" aria-hidden="true">
+                        <defs>
+                          <marker id="gantt-dependency-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse" overflow="visible">
+                            <path d="M1,1 L7,4 L1,7" fill="none" stroke="#7f9299" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                          </marker>
+                        </defs>
+                        <g v-for="line in ganttDependencyLines" :key="line.fromCwpCode + '->' + line.toCwpCode" class="dependency-path">
+                          <title>{{ line.fromCwpCode }} → {{ line.toCwpCode }}（{{ line.relation }}{{ line.lagDays ? ' +' + line.lagDays + 'd' : '' }}）{{ line.critical ? ' · 关键路径' : '' }}</title>
+                          <line v-for="(segment, segmentIndex) in line.segments" :key="segmentIndex"
+                            :x1="`${segment.x1}%`" :y1="`${segment.y1}%`" :x2="`${segment.x2}%`" :y2="`${segment.y2}%`"
+                            class="dep-line" :class="{ final: segment.arrow }"
+                            :marker-end="segment.arrow ? 'url(#gantt-dependency-arrow)' : null" />
+                        </g>
+                      </svg>
                     </div>
                   </div>
                 </div>

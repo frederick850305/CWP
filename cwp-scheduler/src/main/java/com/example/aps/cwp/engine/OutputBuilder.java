@@ -229,10 +229,17 @@ final class OutputBuilder {
         return out;
     }
 
-    /** 反推每个 CWP 的最晚完成时间：从项目计划完工日沿依赖向后传递约束。 */
+    /** 反推每个 CWP 的最晚完成时间：从当前预测完工日沿依赖向后传递约束。
+     * 项目延期由 plannedEnd 与 scheduledEnd 单独比较；若仍以计划完工日反推，
+     * 延期项目会全部得到负时差并失去零时差关键路径，甘特图也就没有关键连线。 */
     private Map<String, LocalDate> calculateLatestEnds(Model model, Map<String, ScheduledTask> scheduled) {
+        Map<String, LocalDate> forecastEndByProject = new HashMap<String, LocalDate>();
+        for (ScheduledTask t : scheduled.values()) {
+            LocalDate current = forecastEndByProject.get(t.cwp.projectCode);
+            if (current == null || t.end.isAfter(current)) forecastEndByProject.put(t.cwp.projectCode, t.end);
+        }
         Map<String, LocalDate> latest = new HashMap<String, LocalDate>();
-        for (ScheduledTask t : scheduled.values()) latest.put(t.cwp.code, model.projects.get(t.cwp.projectCode).plannedEnd);
+        for (ScheduledTask t : scheduled.values()) latest.put(t.cwp.code, forecastEndByProject.get(t.cwp.projectCode));
         List<ScheduledTask> reverse = new ArrayList<ScheduledTask>(scheduled.values()); Collections.reverse(reverse);
         for (int iteration = 0; iteration < reverse.size(); iteration++) for (ScheduledTask succ : reverse) {
             LocalDate succEnd = latest.get(succ.cwp.code); LocalDate succStart = succEnd.minusDays(succ.cwp.duration - 1L);
@@ -284,8 +291,27 @@ final class OutputBuilder {
     }
 
     /** CWP 甘特图：每个工作包的计划/实际起止、分配资源与冲突状态。 */
+    /** CWP 甘特图：除每行任务条外，额外输出依据 dependencies 梳理的依赖连线，
+     * 并标注落在零总时差关键路径上的连线，供前端绘制依赖连接线。 */
     private ObjectNode cwpGantt(Model model, Map<String, ScheduledTask> scheduled) {
-        ObjectNode out=mapper.createObjectNode();out.put("timeUnit","day");ArrayNode tasks=out.putArray("tasks");
+        ObjectNode out=mapper.createObjectNode();out.put("timeUnit","day");
+        // 计算零总时差的关键 CWP（与 projectCriticalPathOutput 同源口径）。
+        Map<String, LocalDate> latestEnd = calculateLatestEnds(model, scheduled);
+        Set<String> criticalCodes = new HashSet<String>();
+        for (ScheduledTask t : scheduled.values()) {
+            LocalDate latestStart = latestEnd.get(t.cwp.code).minusDays(t.cwp.duration - 1L);
+            if (ChronoUnit.DAYS.between(t.start, latestStart) == 0) criticalCodes.add(t.cwp.code);
+        }
+        // 依赖连线：遍历所有 dependencies，标出两端均处于关键路径的连线为关键路径连线。
+        ArrayNode links = out.putArray("dependencyLinks");
+        for (ScheduledTask succ : scheduled.values()) for (Dependency d : succ.cwp.dependencies) {
+            if (!scheduled.containsKey(d.predecessor)) continue;
+            ObjectNode l = links.addObject();
+            l.put("fromCwpCode", d.predecessor); l.put("toCwpCode", succ.cwp.code);
+            l.put("relation", d.relation); l.put("lagDays", d.lag);
+            l.put("critical", criticalCodes.contains(d.predecessor) && criticalCodes.contains(succ.cwp.code));
+        }
+        ArrayNode tasks=out.putArray("tasks");
         for(ScheduledTask t:scheduled.values()){
             ObjectNode n=tasks.addObject();n.put("cwpCode",t.cwp.code);n.put("cwpName",t.cwp.name);n.put("projectCode",t.cwp.projectCode);
             String allocated=t.operationResource.isEmpty()?"":t.operationResource.values().iterator().next();
@@ -294,6 +320,13 @@ final class OutputBuilder {
             n.put("scheduledStart",Domain.atStart(t.start,zone));n.put("scheduledEnd",Domain.atStart(t.end,zone));
             n.put("status",t.withConflict?"scheduledWithConflict":"scheduled");n.set("progress",number(t.cwp.progress));
             ArrayNode violations=n.putArray("violations");for(String v:t.violationCodes)violations.add(v);
+            // 本任务的直接前驱依赖，便于前端在行内展示与连线。
+            ArrayNode deps=n.putArray("dependencies");
+            for (Dependency d : t.cwp.dependencies) {
+                ObjectNode dep=deps.addObject();
+                dep.put("predecessorCwpCode", d.predecessor); dep.put("relation", d.relation); dep.put("lagDays", d.lag);
+            }
+            n.put("isCritical", criticalCodes.contains(t.cwp.code));
         }
         return out;
     }

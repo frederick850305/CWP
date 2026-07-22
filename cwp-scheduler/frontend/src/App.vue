@@ -64,15 +64,55 @@ const selectedProject = ref('all')
 
 // 甘特图全屏展示：全屏时卡片以 fixed 覆盖整个视口，支持 Esc 退出。
 const ganttFullscreen = ref(false)
+const selectedConflictTask = ref(null)
+
+function syncBodyOverflow() {
+  document.body.style.overflow = ganttFullscreen.value || selectedConflictTask.value ? 'hidden' : ''
+}
 
 function toggleGanttFullscreen() {
   ganttFullscreen.value = !ganttFullscreen.value
-  // 全屏时锁定页面滚动，避免背景跟随滚动。
-  document.body.style.overflow = ganttFullscreen.value ? 'hidden' : ''
+  // 全屏或冲突弹层打开时锁定页面滚动，避免背景跟随滚动。
+  syncBodyOverflow()
+}
+
+function conflictCwpCodes(conflict) {
+  return [
+    ...(conflict.conflictedCwps ?? []).map(cwp => cwp.cwpCode ?? cwp),
+    ...(conflict.concurrentCwps ?? []).map(cwp => cwp.cwpCode ?? cwp),
+  ]
+}
+
+function conflictsForTask(task) {
+  return conflicts.value.filter(conflict => conflictCwpCodes(conflict).includes(task.cwpCode))
+}
+
+const selectedTaskConflicts = computed(() => selectedConflictTask.value
+  ? conflictsForTask(selectedConflictTask.value)
+  : [])
+
+function openTaskConflict(task) {
+  if (task.status === 'scheduled') return
+  selectedConflictTask.value = task
+  syncBodyOverflow()
+}
+
+function closeTaskConflict() {
+  selectedConflictTask.value = null
+  syncBodyOverflow()
+}
+
+function showConflictList() {
+  selectedConflictTask.value = null
+  ganttFullscreen.value = false
+  activeTab.value = 'conflicts'
+  syncBodyOverflow()
 }
 
 function handleGanttKeydown(event) {
-  if (event.key === 'Escape' && ganttFullscreen.value) toggleGanttFullscreen()
+  if (event.key !== 'Escape') return
+  if (selectedConflictTask.value) closeTaskConflict()
+  else if (ganttFullscreen.value) toggleGanttFullscreen()
 }
 
 /** 甘特图可选项目列表（按 projectCode 去重）。 */
@@ -393,6 +433,7 @@ async function loadJobs(selectLatest = false) {
 
 async function openJob(jobId) {
   if (!jobId) return
+  if (selectedConflictTask.value) closeTaskConflict()
   loading.value = true
   error.value = ''
   try {
@@ -548,6 +589,35 @@ function conflictType(type) {
   return { CAPACITY: '产能', LABOR: '人力', GRID: '工位', OCCUPANCY: '占用率',
            DEADLINE: '项目延期', WINDOW: '无可行窗口', LOCKED: '锁定冲突',
            RESOURCE: '资源不足', DEPENDENCY: '依赖违反' }[type] ?? type
+}
+
+function conflictAmount(value, unit) {
+  if (value === undefined || value === null || value === '') return '—'
+  return `${value}${unit ? ` ${unit}` : ''}`
+}
+
+function relatedCwps(conflict) {
+  return [...new Set(conflictCwpCodes(conflict))].join('、') || '—'
+}
+
+/** 将约束代码转换成面向业务用户的原因说明。 */
+function conflictReason(conflict) {
+  const available = conflictAmount(conflict.availableAmount, conflict.unit)
+  const required = conflictAmount(conflict.requiredAmount, conflict.unit)
+  const shortage = conflictAmount(conflict.shortageAmount, conflict.unit)
+  const resource = conflict.resourceGroupName || conflict.resourceGroupId || '当前资源'
+  const reasons = {
+    CAPACITY: `${resource}在该周期的可用产能为 ${available}，排程需求达到 ${required}，超出 ${shortage}。`,
+    LABOR: `${resource}在该日期可用人数为 ${available}，并行任务需求达到 ${required}，人员缺口为 ${shortage}。`,
+    GRID: `${resource}无法提供任务所需的工位小块，当前需求为 ${required}，因此无法在该位置满足排程。`,
+    OCCUPANCY: `${resource}在${conflict.peakDate || conflict.date || '冲突时段'}的并发占用峰值为 ${required}，超过可用上限 ${available}，超出 ${shortage}。`,
+    DEADLINE: `该任务所在项目的排程完工时间超过计划完工约束${conflict.plannedEnd ? `（${formatDate(conflict.plannedEnd)}）` : ''}，继续按当前日期执行将造成项目延期。`,
+    WINDOW: '在计划窗口、依赖关系和资源约束同时生效时，未找到完全可行的排程日期，系统只能保留带冲突的安排。',
+    LOCKED: '任务的锁定时间或锁定资源与当前资源可用性发生冲突，锁定条件使系统无法自动避让。',
+    RESOURCE: `${resource}在当前排程时段不能满足任务资源需求，系统未找到符合限制的替代资源或空闲时段。`,
+    DEPENDENCY: '当前排程未满足前后置任务的依赖关系或间隔要求，需要调整前置任务、后置任务或依赖时差。',
+  }
+  return reasons[conflict.conflictType] || '当前排程违反了任务关联的硬约束，需要结合资源、时间窗口和依赖关系进一步调整。'
 }
 
 // 冲突类型可选项（与 conflictType 映射保持一致），供检索下拉使用。
@@ -774,6 +844,7 @@ onUnmounted(() => {
                     <div class="gantt-legend">
                       <span class="planned-key">计划</span>
                       <span class="scheduled-key">排程</span>
+                      <span class="conflict-key" title="点击冲突排程条可查看详情">冲突</span>
                       <span class="dep-key">关键路径（FS）</span>
                     </div>
                     <button type="button" class="gantt-fullscreen-toggle" @click="toggleGanttFullscreen"
@@ -796,7 +867,11 @@ onUnmounted(() => {
                         <div class="gantt-track">
                           <i v-for="tick in ganttRange.ticks" :key="tick.label + tick.offset" :style="{ left: `${tick.offset}%` }"></i>
                           <span class="planned-bar" :style="ganttStyle(task, 'planned')"></span>
-                          <span class="scheduled-bar" :class="{ conflicted: task.status !== 'scheduled' }" :style="ganttStyle(task, 'scheduled')">
+                          <span class="scheduled-bar" :class="{ conflicted: task.status !== 'scheduled' }" :style="ganttStyle(task, 'scheduled')"
+                            :role="task.status !== 'scheduled' ? 'button' : undefined"
+                            :tabindex="task.status !== 'scheduled' ? 0 : undefined"
+                            :aria-label="task.status !== 'scheduled' ? `查看 ${task.cwpCode} 的排程冲突详情` : undefined"
+                            @click="openTaskConflict(task)" @keydown.enter="openTaskConflict(task)" @keydown.space.prevent="openTaskConflict(task)">
                             <b>{{ task.cwpCode }}</b>
                           </span>
                         </div>
@@ -820,6 +895,57 @@ onUnmounted(() => {
                 </div>
                 <div v-else class="inline-empty">没有可展示的 CWP 任务</div>
               </article>
+              <Teleport to="body">
+                <div v-if="selectedConflictTask" class="conflict-modal-backdrop" @click.self="closeTaskConflict">
+                  <section class="conflict-modal" role="dialog" aria-modal="true" aria-labelledby="conflict-modal-title">
+                    <header class="conflict-modal-header">
+                      <div>
+                        <p class="eyebrow">SCHEDULE CONFLICT</p>
+                        <h3 id="conflict-modal-title">排程冲突详情</h3>
+                      </div>
+                      <button type="button" class="conflict-modal-close" aria-label="关闭冲突详情" @click="closeTaskConflict">×</button>
+                    </header>
+                    <div class="conflict-task-summary">
+                      <div><span>CWP</span><strong>{{ selectedConflictTask.cwpCode }}</strong></div>
+                      <div><span>任务名称</span><strong>{{ selectedConflictTask.cwpName }}</strong></div>
+                      <div><span>排程时间</span><strong>{{ formatDate(selectedConflictTask.scheduledStart) }} 至 {{ formatDate(selectedConflictTask.scheduledEnd) }}</strong></div>
+                      <div><span>分配资源</span><strong>{{ selectedConflictTask.allocatedResourceGroupId || '—' }}</strong></div>
+                    </div>
+
+                    <div v-if="selectedTaskConflicts.length" class="conflict-modal-content">
+                      <div class="conflict-modal-table">
+                        <table>
+                          <thead><tr><th>类型</th><th>日期</th><th>资源</th><th>可用量</th><th>需求量</th><th>缺口</th><th>关联 CWP</th></tr></thead>
+                          <tbody>
+                            <tr v-for="conflict in selectedTaskConflicts" :key="conflict.conflictId">
+                              <td><span class="type-badge">{{ conflictType(conflict.conflictType) }}</span></td>
+                              <td>{{ formatDate(conflict.date) }}</td>
+                              <td><strong>{{ conflict.resourceGroupName || '—' }}</strong><small>{{ conflict.resourceGroupId || '—' }}</small></td>
+                              <td>{{ conflictAmount(conflict.availableAmount, conflict.unit) }}</td>
+                              <td>{{ conflictAmount(conflict.requiredAmount, conflict.unit) }}</td>
+                              <td class="shortage">{{ conflictAmount(conflict.shortageAmount, conflict.unit) }}</td>
+                              <td>{{ relatedCwps(conflict) }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div class="conflict-reasons">
+                        <article v-for="conflict in selectedTaskConflicts" :key="`${conflict.conflictId}-reason`">
+                          <div><span>{{ conflictType(conflict.conflictType) }}</span><small>{{ conflict.conflictId }}</small></div>
+                          <p>{{ conflictReason(conflict) }}</p>
+                        </article>
+                      </div>
+                    </div>
+                    <div v-else class="conflict-modal-empty">
+                      该任务已被标记为冲突排程，但结果中没有可关联的冲突清单明细，请重新运行排程或检查输出数据。
+                    </div>
+                    <footer class="conflict-modal-footer">
+                      <span>可在“冲突诊断”页签中查看全部冲突并组合筛选。</span>
+                      <button type="button" class="primary-button" @click="showConflictList">查看冲突清单</button>
+                    </footer>
+                  </section>
+                </div>
+              </Teleport>
             </div>
 
             <div v-else-if="activeTab === 'resources'" class="tab-panel resource-chart-panel">

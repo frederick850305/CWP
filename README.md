@@ -4,7 +4,7 @@
 
 本服务读取 CWP、项目、工艺路线、人员上限与资源组等输入，使用确定性的纯 Java 启发式算法，生成排程方案、资源利用率、冲突清单、关键路径与甘特图数据，并通过 Vue 驾驶舱提供交互式查看与规则调优。
 
-> 详细设计、API、计算口径与算法说明见 [`cwp-scheduler/README.md`](cwp-scheduler/README.md)。
+> 详细设计、API、计算口径与算法说明见源码 `cwp-scheduler/src/main/java/com/example/aps/cwp/`（排程引擎 `engine/`、接口 `api/`、输入校验 `validation/`）。
 
 ## 技术栈
 
@@ -21,7 +21,7 @@ CWP/
 │   ├── frontend/         # Vue 3 驾驶舱前端源码
 │   ├── examples/         # 内置船厂示例输入
 │   ├── scripts/          # 测试数据生成脚本
-│   └── README.md         # 服务详细文档
+│   ├── .mvn/ + mvnw      # Maven Wrapper（免装 Maven，见「环境要求」）
 ├── sources/              # 只读参考资料（外部同步，勿修改）
 └── AGENTS.md             # 协作 / 代理上下文说明
 ```
@@ -52,7 +52,7 @@ npm run dev
 
 启动后访问 **http://localhost:5173/** 打开排程驾驶舱（前端通过代理调用 8080 后端）。
 
-> 说明：8080 提供的是打包后的静态页面，开发调试请使用 5173。传统打包部署方式见 [`cwp-scheduler/README.md`](cwp-scheduler/README.md)。
+> 说明：8080 提供的是打包后的静态页面，开发调试请使用 5173。打包部署：`cd cwp-scheduler && ./mvnw package && java -jar target/cwp-scheduler-1.0.0.jar`。
 
 ## 停止服务
 

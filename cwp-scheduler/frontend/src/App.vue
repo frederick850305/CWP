@@ -771,13 +771,18 @@ onMounted(() => { loadJobs(true); loadRules(); loadAlgorithms() })
                 <div v-else class="table-scroll">
                   <table>
                     <thead><tr><th>类型</th><th>日期</th><th>资源</th><th>可用量</th><th>需求量</th><th>缺口</th><th>关联 CWP</th></tr></thead>
-                    <tbody><tr v-for="item in conflicts" :key="item.conflictId">
-                      <td><span class="type-badge">{{ conflictType(item.conflictType) }}</span></td><td>{{ item.date }}</td><td><strong>{{ item.resourceGroupName }}</strong><small>{{ item.resourceGroupId }}</small></td>
-                      <td>{{ item.availableAmount }} {{ item.unit }}</td><td>{{ item.requiredAmount }} {{ item.unit }}</td><td class="shortage">{{ item.shortageAmount }} {{ item.unit }}</td>
-                      <td>{{ (item.conflictedCwps ?? []).map(cwp => cwp.cwpCode ?? cwp).join('、') || '—' }}</td>
-                    </tr><tr v-if="item.concurrentCwps && item.concurrentCwps.length" class="conflict-detail">
-                      <td colspan="7"><span class="detail-label">峰值日 {{ item.peakDate }} · 同时占用区域数 {{ item.concurrentCwps.length }} · 竞争 CWP：</span>{{ item.concurrentCwps.join('、') }}</td>
-                    </tr></tbody>
+                    <tbody>
+                      <template v-for="item in conflicts" :key="item.conflictId">
+                        <tr>
+                          <td><span class="type-badge">{{ conflictType(item.conflictType) }}</span></td><td>{{ item.date }}</td><td><strong>{{ item.resourceGroupName }}</strong><small>{{ item.resourceGroupId }}</small></td>
+                          <td>{{ item.availableAmount }} {{ item.unit }}</td><td>{{ item.requiredAmount }} {{ item.unit }}</td><td class="shortage">{{ item.shortageAmount }} {{ item.unit }}</td>
+                          <td>{{ (item.conflictedCwps ?? []).map(cwp => cwp.cwpCode ?? cwp).join('、') || '—' }}</td>
+                        </tr>
+                        <tr v-if="item.concurrentCwps && item.concurrentCwps.length" class="conflict-detail">
+                          <td colspan="7"><span class="detail-label">峰值日 {{ item.peakDate }} · 同时占用区域数 {{ item.concurrentCwps.length }} · 竞争 CWP：</span>{{ item.concurrentCwps.join('、') }}</td>
+                        </tr>
+                      </template>
+                    </tbody>
                   </table>
                 </div>
               </article>

@@ -550,6 +550,49 @@ function conflictType(type) {
            RESOURCE: '资源不足', DEPENDENCY: '依赖违反' }[type] ?? type
 }
 
+// 冲突类型可选项（与 conflictType 映射保持一致），供检索下拉使用。
+const conflictTypeOptions = Object.entries({ CAPACITY: '产能', LABOR: '人力', GRID: '工位', OCCUPANCY: '占用率',
+  DEADLINE: '项目延期', WINDOW: '无可行窗口', LOCKED: '锁定冲突', RESOURCE: '资源不足', DEPENDENCY: '依赖违反' })
+
+// 冲突诊断检索：可按类型(精确)、日期/资源/关联 CWP(模糊)任意组合查询，多条件间为 AND。
+const conflictFilterType = ref('all')
+const conflictFilterDate = ref('') // 原生日期控件值，格式 yyyy-MM-dd，与冲突 date 字段一致
+const conflictFilterResource = ref('')
+const conflictFilterCwp = ref('')
+const hasConflictFilter = computed(() =>
+  conflictFilterType.value !== 'all' || !!conflictFilterDate.value ||
+  !!conflictFilterResource.value.trim() || !!conflictFilterCwp.value.trim()
+)
+const filteredConflicts = computed(() => {
+  const type = conflictFilterType.value
+  const date = conflictFilterDate.value // yyyy-MM-dd，与 item.date 同为 ISO 日期
+  const resource = conflictFilterResource.value.trim().toLowerCase()
+  const cwp = conflictFilterCwp.value.trim().toLowerCase()
+  if (!hasConflictFilter.value) return conflicts.value
+  return conflicts.value.filter(item => {
+    if (type !== 'all' && item.conflictType !== type) return false
+    if (date && (item.date ?? '').slice(0, 10) !== date) return false
+    if (resource) {
+      const r = `${item.resourceGroupName ?? ''} ${item.resourceGroupId ?? ''}`.toLowerCase()
+      if (!r.includes(resource)) return false
+    }
+    if (cwp) {
+      const cwps = [
+        ...(item.conflictedCwps ?? []).map(c => c.cwpCode ?? c),
+        ...(item.concurrentCwps ?? []),
+      ].join(' ').toLowerCase()
+      if (!cwps.includes(cwp)) return false
+    }
+    return true
+  })
+})
+function resetConflictFilters() {
+  conflictFilterType.value = 'all'
+  conflictFilterDate.value = ''
+  conflictFilterResource.value = ''
+  conflictFilterCwp.value = ''
+}
+
 onMounted(() => {
   loadJobs(true); loadRules(); loadAlgorithms()
   window.addEventListener('keydown', handleGanttKeydown)
@@ -835,22 +878,38 @@ onUnmounted(() => {
               <article class="content-card conflict-card">
                 <div class="card-heading"><div><p class="eyebrow">CONSTRAINT DIAGNOSTICS</p><h3>资源冲突清单</h3></div><span :class="conflicts.length ? 'alert-count' : 'safe-count'">{{ conflicts.length ? `${conflicts.length} 项待处理` : '未发现冲突' }}</span></div>
                 <div v-if="!conflicts.length" class="no-conflicts"><span>✓</span><h4>所有硬约束均已满足</h4><p>当前方案没有检测到产能、人力、工位或占用率冲突。</p></div>
-                <div v-else class="table-scroll">
-                  <table>
-                    <thead><tr><th>类型</th><th>日期</th><th>资源</th><th>可用量</th><th>需求量</th><th>缺口</th><th>关联 CWP</th></tr></thead>
-                    <tbody>
-                      <template v-for="item in conflicts" :key="item.conflictId">
-                        <tr>
-                          <td><span class="type-badge">{{ conflictType(item.conflictType) }}</span></td><td>{{ item.date }}</td><td><strong>{{ item.resourceGroupName }}</strong><small>{{ item.resourceGroupId }}</small></td>
-                          <td>{{ item.availableAmount }} {{ item.unit }}</td><td>{{ item.requiredAmount }} {{ item.unit }}</td><td class="shortage">{{ item.shortageAmount }} {{ item.unit }}</td>
-                          <td>{{ (item.conflictedCwps ?? []).map(cwp => cwp.cwpCode ?? cwp).join('、') || '—' }}</td>
-                        </tr>
-                        <tr v-if="item.concurrentCwps && item.concurrentCwps.length" class="conflict-detail">
-                          <td colspan="7"><span class="detail-label">峰值日 {{ item.peakDate }} · 同时占用区域数 {{ item.concurrentCwps.length }} · 竞争 CWP：</span>{{ item.concurrentCwps.join('、') }}</td>
-                        </tr>
-                      </template>
-                    </tbody>
-                  </table>
+                <div v-else>
+                  <div class="conflict-filters">
+                    <label>类型
+                      <select v-model="conflictFilterType">
+                        <option value="all">全部类型</option>
+                        <option v-for="[val, label] in conflictTypeOptions" :key="val" :value="val">{{ label }}</option>
+                      </select>
+                    </label>
+                    <label>日期 <input v-model="conflictFilterDate" type="date" /></label>
+                    <label>资源 <input v-model="conflictFilterResource" type="text" placeholder="资源名 / ID" /></label>
+                    <label>关联 CWP <input v-model="conflictFilterCwp" type="text" placeholder="CWP 编码" /></label>
+                    <button v-if="hasConflictFilter" type="button" class="filter-clear" @click="resetConflictFilters">清除筛选</button>
+                    <span v-if="hasConflictFilter" class="filter-count">匹配 {{ filteredConflicts.length }} / {{ conflicts.length }} 项</span>
+                  </div>
+                  <div v-if="!filteredConflicts.length" class="no-conflicts"><span>🔍</span><h4>未找到匹配的冲突</h4><p>请调整检索条件后重试。</p></div>
+                  <div v-else class="table-scroll">
+                    <table>
+                      <thead><tr><th>类型</th><th>日期</th><th>资源</th><th>可用量</th><th>需求量</th><th>缺口</th><th>关联 CWP</th></tr></thead>
+                      <tbody>
+                        <template v-for="item in filteredConflicts" :key="item.conflictId">
+                          <tr>
+                            <td><span class="type-badge">{{ conflictType(item.conflictType) }}</span></td><td>{{ item.date }}</td><td><strong>{{ item.resourceGroupName }}</strong><small>{{ item.resourceGroupId }}</small></td>
+                            <td>{{ item.availableAmount }} {{ item.unit }}</td><td>{{ item.requiredAmount }} {{ item.unit }}</td><td class="shortage">{{ item.shortageAmount }} {{ item.unit }}</td>
+                            <td>{{ (item.conflictedCwps ?? []).map(cwp => cwp.cwpCode ?? cwp).join('、') || '—' }}</td>
+                          </tr>
+                          <tr v-if="item.concurrentCwps && item.concurrentCwps.length" class="conflict-detail">
+                            <td colspan="7"><span class="detail-label">峰值日 {{ item.peakDate }} · 同时占用区域数 {{ item.concurrentCwps.length }} · 竞争 CWP：</span>{{ item.concurrentCwps.join('、') }}</td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </article>
             </div>

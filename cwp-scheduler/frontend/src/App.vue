@@ -14,6 +14,10 @@ const error = ref('')
 const toast = ref('')
 const activeTab = ref('overview')
 const jobQuery = ref('')
+// 求解进度动画：后端求解为一次性调用，仅有 10%/100% 两个真实节点，
+// 因此在等待期间由前端平滑推进显示进度，逼近 90% 后等待真实结果补到 100%。
+const displayProgress = ref(0)
+let progressTimer = null
 const fileInput = ref(null)
 const rulesState = ref({ rules: {}, supportedCommands: [], history: [] })
 const ruleMessage = ref('')
@@ -251,6 +255,24 @@ function ganttStyle(task, type) {
   return { left: `${left}%`, width: `${Math.max(width, 1.2)}%` }
 }
 
+/** 启动前端模拟进度：从 10% 起步，阶梯式推进并逐步放缓，最高逼近 90%。 */
+function startProgress() {
+  stopProgress()
+  displayProgress.value = 10
+  progressTimer = window.setInterval(() => {
+    if (displayProgress.value >= 90) return
+    // 越接近 90% 步进越小，营造真实的收敛感。
+    const step = displayProgress.value < 60 ? 8 : displayProgress.value < 80 ? 4 : 2
+    displayProgress.value = Math.min(90, displayProgress.value + step)
+  }, 450)
+}
+
+/** 结束进度：可选补到 100%，随后停止计时器。 */
+function stopProgress(finish = false) {
+  if (progressTimer) { window.clearInterval(progressTimer); progressTimer = null }
+  if (finish) displayProgress.value = 100
+}
+
 async function request(url, options) {
   const response = await fetch(url, options)
   const body = await response.json().catch(() => ({}))
@@ -364,11 +386,14 @@ async function openJob(jobId) {
       throw new Error(status.failureReason || '排程任务执行失败')
     } else {
       result.value = null
+      startProgress()
       await pollJob(status.jobId)
+      stopProgress(true)
     }
   } catch (cause) {
     error.value = cause.message
   } finally {
+    stopProgress()
     loading.value = false
   }
 }
@@ -392,6 +417,7 @@ async function submitInput(input, sourceName) {
   loading.value = true
   error.value = ''
   result.value = null
+  startProgress()
   try {
     const job = await request(API, {
       method: 'POST',
@@ -403,10 +429,12 @@ async function submitInput(input, sourceName) {
     localStorage.setItem('cwp-last-job-id', job.jobId)
     showToast(`${sourceName}已提交，正在计算排程`)
     await pollJob(job.jobId)
+    stopProgress(true)
     showToast('排程完成，已更新可视化结果')
   } catch (cause) {
     error.value = cause.message
   } finally {
+    stopProgress()
     loading.value = false
   }
 }
@@ -578,8 +606,8 @@ onMounted(() => { loadJobs(true); loadRules(); loadAlgorithms() })
           <div v-if="loading && !result" class="loading-state">
             <div class="radar-loader"><i></i><span></span></div>
             <h2>正在生成排程方案</h2>
-            <p>{{ currentJob ? `任务 ${shortId(currentJob.jobId)} · ${currentJob.progress ?? 0}%` : '正在读取数据…' }}</p>
-            <div class="progress-track"><span :style="{ width: `${currentJob?.progress ?? 12}%` }"></span></div>
+            <p>{{ currentJob ? `任务 ${shortId(currentJob.jobId)} · ${displayProgress}%` : `正在读取数据… ${displayProgress}%` }}</p>
+            <div class="progress-track"><span :style="{ width: `${displayProgress}%` }"></span></div>
           </div>
 
           <div v-else-if="result" class="dashboard-content">

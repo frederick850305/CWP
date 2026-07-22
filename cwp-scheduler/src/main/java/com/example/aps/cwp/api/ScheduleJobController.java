@@ -1,5 +1,7 @@
 package com.example.aps.cwp.api;
 
+import com.example.aps.cwp.engine.AlgorithmRegistry;
+import com.example.aps.cwp.engine.ScheduleAlgorithm;
 import com.example.aps.cwp.job.ScheduleJob;
 import com.example.aps.cwp.service.ScheduleJobService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -24,16 +26,41 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/cwp-schedule-jobs")
 public class ScheduleJobController {
     private final ScheduleJobService service;
+    private final AlgorithmRegistry registry;
 
-    public ScheduleJobController(ScheduleJobService service) { this.service = service; }
+    public ScheduleJobController(ScheduleJobService service, AlgorithmRegistry registry) {
+        this.service = service;
+        this.registry = registry;
+    }
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> create(@RequestBody JsonNode input) {
-        ScheduleJob job = service.create(input);
+        // 方案 B：请求体可包裹为 { "algorithm": "<code>", "input": { ...原有排程数据... } }。
+        // 若未包裹（直接是原始排程数据），则整体作为 input 并回退到默认算法，保证向后兼容。
+        String requested = input.path("algorithm").asText("");
+        // 把请求算法解析成注册表内的有效 code：未知或空值回退到默认算法，
+        // 这样 job summary 与最终结果回显的都是真实生效的算法编码。
+        String algorithm = registry.getOrDefault(requested).code();
+        JsonNode payload = input.has("input") ? input.path("input") : input;
+        ScheduleJob job = service.create(payload, algorithm);
         Map<String, Object> body = summary(job);
         return ResponseEntity.accepted()
                 .location(URI.create("/api/v1/cwp-schedule-jobs/" + job.getJobId()))
                 .body(body);
+    }
+
+    /** 列出全部可用排程算法（code / 展示名 / 说明），供前端动态渲染下拉。 */
+    @GetMapping("/algorithms")
+    public List<Map<String, String>> algorithms() {
+        List<Map<String, String>> body = new ArrayList<Map<String, String>>();
+        for (ScheduleAlgorithm algorithm : registry.list()) {
+            Map<String, String> item = new LinkedHashMap<String, String>();
+            item.put("code", algorithm.code());
+            item.put("displayName", algorithm.displayName());
+            item.put("description", algorithm.description());
+            body.add(item);
+        }
+        return body;
     }
 
     @GetMapping
@@ -69,6 +96,7 @@ public class ScheduleJobController {
         body.put("jobId", job.getJobId());
         body.put("status", job.getStatus());
         body.put("progress", job.getProgress());
+        body.put("algorithm", job.getAlgorithm());
         body.put("createdAt", job.getCreatedAt());
         body.put("startedAt", job.getStartedAt());
         body.put("completedAt", job.getCompletedAt());

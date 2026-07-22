@@ -2,7 +2,8 @@ package com.example.aps.cwp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.aps.cwp.engine.ScheduleEngine;
+import com.example.aps.cwp.engine.DefaultHeuristicStrategy;
+import com.example.aps.cwp.engine.HeuristicScheduleEngine;
 import com.example.aps.cwp.validation.InputValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,7 +18,9 @@ class ScheduleEngineTest {
         JsonNode input = mapper.readTree(TestInputs.singleCapacityCwp());
         new InputValidator().validate(input);
         SchedulerProperties properties = new SchedulerProperties();
-        JsonNode result = new ScheduleEngine(mapper, properties).solve(input, Collections.<String>emptyList());
+        HeuristicScheduleEngine engine = new HeuristicScheduleEngine(mapper, properties,
+                new DefaultHeuristicStrategy(), "default", "默认启发式", "");
+        JsonNode result = engine.solve(input, Collections.<String>emptyList());
 
         JsonNode row = result.path("monthlyWorkshopUtilization").get(0);
         assertThat(row.path("usedAmount").decimalValue()).isEqualByComparingTo("1015");

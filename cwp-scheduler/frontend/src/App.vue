@@ -23,6 +23,10 @@ const ruleConversation = ref([
   { role: 'assistant', text: '告诉我你希望怎样调整排程策略。我会先生成结构化变更预览，只有确认后才会生效。' },
 ])
 
+// 排程算法选择与后台路由
+const algorithms = ref([])
+const selectedAlgorithm = ref('default')
+
 const tabs = [
   { id: 'overview', label: '排程总览' },
   { id: 'gantt', label: 'CWP 甘特图' },
@@ -39,6 +43,26 @@ const projects = computed(() => result.value?.projectCriticalPathOutput?.project
 const laborRows = computed(() => (result.value?.monthlyLaborDemandCurve ?? []).flatMap(month =>
   (month.byLocation ?? []).map(row => ({ ...row, month: month.month }))))
 const maxLabor = computed(() => Math.max(1, ...laborRows.value.map(item => Number(item.demand))))
+
+// 甘特图项目筛选
+const selectedProject = ref('all')
+
+/** 甘特图可选项目列表（按 projectCode 去重）。 */
+const projectOptions = computed(() => {
+  const seen = new Map()
+  tasks.value.forEach(task => {
+    if (task.projectCode && !seen.has(task.projectCode)) {
+      seen.set(task.projectCode, task.projectName || task.projectCode)
+    }
+  })
+  return Array.from(seen.entries()).map(([code, name]) => ({ code, name }))
+})
+
+/** 按当前选中项目过滤后的 CWP 任务。 */
+const filteredTasks = computed(() => {
+  if (selectedProject.value === 'all') return tasks.value
+  return tasks.value.filter(task => task.projectCode === selectedProject.value)
+})
 
 // 资源类型筛选与分组条形图数据
 const selectedResourceType = ref('all')
@@ -119,8 +143,8 @@ const ruleCards = computed(() => {
 })
 
 const ganttRange = computed(() => {
-  if (!tasks.value.length) return null
-  const dates = tasks.value.flatMap(task => [task.plannedStart, task.plannedEnd, task.scheduledStart, task.scheduledEnd])
+  if (!filteredTasks.value.length) return null
+  const dates = filteredTasks.value.flatMap(task => [task.plannedStart, task.plannedEnd, task.scheduledStart, task.scheduledEnd])
     .filter(Boolean).map(toDay)
   const start = new Date(Math.min(...dates))
   const end = new Date(Math.max(...dates))
@@ -167,6 +191,18 @@ async function loadRules() {
     rulesState.value = await request(RULE_API)
   } catch (cause) {
     error.value = cause.message
+  }
+}
+
+async function loadAlgorithms() {
+  try {
+    algorithms.value = await request(`${API}/algorithms`)
+    // 若当前选中项不在清单中（如后台尚未就绪），回退到首个算法。
+    if (!algorithms.value.some(alg => alg.code === selectedAlgorithm.value)) {
+      selectedAlgorithm.value = algorithms.value[0]?.code || 'default'
+    }
+  } catch (cause) {
+    // 算法清单获取失败时静默回退，不阻断其它功能。
   }
 }
 
@@ -245,6 +281,8 @@ async function openJob(jobId) {
     localStorage.setItem('cwp-last-job-id', status.jobId)
     if (status.status === 'COMPLETED') {
       result.value = await request(`${API}/${status.jobId}/result`)
+      selectedProject.value = 'all'
+      if (status.algorithm) selectedAlgorithm.value = status.algorithm
       activeTab.value = 'overview'
     } else if (status.status === 'FAILED') {
       result.value = null
@@ -283,7 +321,7 @@ async function submitInput(input, sourceName) {
     const job = await request(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
+      body: JSON.stringify({ algorithm: selectedAlgorithm.value, input }),
     })
     currentJob.value = job
     jobQuery.value = job.jobId
@@ -385,7 +423,7 @@ function conflictType(type) {
            RESOURCE: '资源不足', DEPENDENCY: '依赖违反' }[type] ?? type
 }
 
-onMounted(() => { loadJobs(true); loadRules() })
+onMounted(() => { loadJobs(true); loadRules(); loadAlgorithms() })
 </script>
 
 <template>
@@ -419,6 +457,12 @@ onMounted(() => { loadJobs(true); loadRules() })
           <p class="hero-description">集中查看计划偏差、资源负荷、人力需求与约束冲突，让每个 CWP 的安排都有据可查。</p>
         </div>
         <div class="hero-actions">
+          <label class="project-filter algorithm-filter">
+            <span>算法</span>
+            <select v-model="selectedAlgorithm" :disabled="loading" title="选择排程算法，提交后将调用后台对应算法">
+              <option v-for="alg in algorithms" :key="alg.code" :value="alg.code" :title="alg.description">{{ alg.displayName }}</option>
+            </select>
+          </label>
           <button class="primary-button" type="button" @click="runSample" :disabled="loading">
             <span class="button-icon">▶</span>{{ loading ? '正在排程…' : '运行示例排程' }}
           </button>
@@ -472,7 +516,7 @@ onMounted(() => { loadJobs(true); loadRules() })
                     <i></i>{{ summary.feasible ? '方案可行' : '存在硬约束冲突' }}
                   </span>
                 </div>
-                <p>任务 {{ currentJob?.jobId }} · 完成于 {{ formatDateTime(currentJob?.completedAt) }}</p>
+                <p>任务 {{ currentJob?.jobId }} · 算法 {{ result.algorithmDisplayName || currentJob?.algorithm || '默认启发式' }} · 完成于 {{ formatDateTime(currentJob?.completedAt) }}</p>
               </div>
               <button class="download-button" type="button" @click="downloadResult">↓ 导出结果 JSON</button>
             </div>
@@ -538,9 +582,18 @@ onMounted(() => { loadJobs(true); loadRules() })
               <article class="content-card gantt-card">
                 <div class="card-heading">
                   <div><p class="eyebrow">CWP TIMELINE</p><h3>计划与排程对比</h3></div>
-                  <div class="gantt-legend"><span class="planned-key">计划</span><span class="scheduled-key">排程</span></div>
+                  <div class="gantt-controls">
+                    <label class="project-filter">
+                      <span>项目</span>
+                      <select v-model="selectedProject">
+                        <option value="all">全部项目</option>
+                        <option v-for="project in projectOptions" :key="project.code" :value="project.code">{{ project.name }}</option>
+                      </select>
+                    </label>
+                    <div class="gantt-legend"><span class="planned-key">计划</span><span class="scheduled-key">排程</span></div>
+                  </div>
                 </div>
-                <div v-if="tasks.length" class="gantt-scroll">
+                <div v-if="filteredTasks.length" class="gantt-scroll">
                   <div class="gantt-chart">
                     <div class="gantt-header">
                       <div class="gantt-label">CWP / 资源组</div>
@@ -548,7 +601,7 @@ onMounted(() => { loadJobs(true); loadRules() })
                         <span v-for="tick in ganttRange.ticks" :key="tick.label + tick.offset" :style="{ left: `${tick.offset}%` }">{{ tick.label }}</span>
                       </div>
                     </div>
-                    <div v-for="task in tasks" :key="task.cwpCode" class="gantt-row">
+                    <div v-for="task in filteredTasks" :key="task.cwpCode" class="gantt-row">
                       <div class="gantt-label"><strong>{{ task.cwpName }}</strong><small>{{ task.cwpCode }} · {{ task.allocatedResourceGroupId }}</small></div>
                       <div class="gantt-track">
                         <i v-for="tick in ganttRange.ticks" :key="tick.label + tick.offset" :style="{ left: `${tick.offset}%` }"></i>

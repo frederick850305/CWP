@@ -16,13 +16,15 @@ public class ScheduleJob {
     private volatile JsonNode result;
     private volatile String failureReason;
     private final List<String> warnings;
+    private final String algorithm;
 
-    public ScheduleJob(String jobId, List<String> warnings) {
+    public ScheduleJob(String jobId, List<String> warnings, String algorithm) {
         this.jobId = jobId;
         this.status = JobStatus.QUEUED;
         this.progress = 0;
         this.createdAt = OffsetDateTime.now();
         this.warnings = Collections.synchronizedList(new ArrayList<String>(warnings));
+        this.algorithm = algorithm;
     }
 
     public String getJobId() { return jobId; }
@@ -40,4 +42,5 @@ public class ScheduleJob {
     public String getFailureReason() { return failureReason; }
     public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
     public List<String> getWarnings() { return warnings; }
+    public String getAlgorithm() { return algorithm; }
 }

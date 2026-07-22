@@ -19,7 +19,7 @@ import java.util.Map;
  *
  * <p>负责把接口 JSON 解析成强类型的排程对象。所有金额、工作量均使用 {@link BigDecimal}
  * 以避免浮点误差；日期统一转换为本地时区的 {@link LocalDate}。该模型是只读的，
- * 真正的资源占用状态由 {@code ScheduleEngine.Ledger} 维护。</p>
+ * 真正的资源占用状态由 {@code Ledger} 维护。</p>
  */
 final class Domain {
     private Domain() { }

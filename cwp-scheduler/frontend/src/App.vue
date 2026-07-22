@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import sampleInput from '../../examples/cwp-schedule-test.json'
 
 const API = '/api/v1/cwp-schedule-jobs'
@@ -50,6 +50,19 @@ const maxLabor = computed(() => Math.max(1, ...laborRows.value.map(item => Numbe
 
 // 甘特图项目筛选
 const selectedProject = ref('all')
+
+// 甘特图全屏展示：全屏时卡片以 fixed 覆盖整个视口，支持 Esc 退出。
+const ganttFullscreen = ref(false)
+
+function toggleGanttFullscreen() {
+  ganttFullscreen.value = !ganttFullscreen.value
+  // 全屏时锁定页面滚动，避免背景跟随滚动。
+  document.body.style.overflow = ganttFullscreen.value ? 'hidden' : ''
+}
+
+function handleGanttKeydown(event) {
+  if (event.key === 'Escape' && ganttFullscreen.value) toggleGanttFullscreen()
+}
 
 /** 甘特图可选项目列表（按 projectCode 去重）。 */
 const projectOptions = computed(() => {
@@ -526,7 +539,14 @@ function conflictType(type) {
            RESOURCE: '资源不足', DEPENDENCY: '依赖违反' }[type] ?? type
 }
 
-onMounted(() => { loadJobs(true); loadRules(); loadAlgorithms() })
+onMounted(() => {
+  loadJobs(true); loadRules(); loadAlgorithms()
+  window.addEventListener('keydown', handleGanttKeydown)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGanttKeydown)
+  document.body.style.overflow = ''
+})
 </script>
 
 <template>
@@ -682,7 +702,7 @@ onMounted(() => { loadJobs(true); loadRules(); loadAlgorithms() })
             </div>
 
             <div v-else-if="activeTab === 'gantt'" class="tab-panel">
-              <article class="content-card gantt-card">
+              <article class="content-card gantt-card" :class="{ 'gantt-fullscreen': ganttFullscreen }">
                 <div class="card-heading">
                   <div><p class="eyebrow">CWP TIMELINE</p><h3>计划与排程对比</h3></div>
                   <div class="gantt-controls">
@@ -698,6 +718,10 @@ onMounted(() => { loadJobs(true); loadRules(); loadAlgorithms() })
                       <span class="scheduled-key">排程</span>
                       <span class="dep-key">关键路径（FS）</span>
                     </div>
+                    <button type="button" class="gantt-fullscreen-toggle" @click="toggleGanttFullscreen"
+                      :title="ganttFullscreen ? '退出全屏（Esc）' : '全屏展示甘特图'">
+                      <span aria-hidden="true">{{ ganttFullscreen ? '⤡' : '⤢' }}</span>{{ ganttFullscreen ? '退出全屏' : '全屏' }}
+                    </button>
                   </div>
                 </div>
                 <div v-if="filteredTasks.length" class="gantt-scroll">

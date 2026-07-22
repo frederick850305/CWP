@@ -111,12 +111,28 @@ main { padding-bottom: 56px; }
 .gantt-scroll { overflow-x: auto; border: 1px solid #e6ecec; }.gantt-chart { min-width: 850px; }.gantt-header, .gantt-row { display: grid; grid-template-columns: 220px minmax(620px, 1fr); }.gantt-header { height: 40px; background: #f6f8f8; border-bottom: 1px solid #dde5e6; }.gantt-label { padding: 8px 12px; border-right: 1px solid #e0e6e7; }.gantt-header .gantt-label { color: #85969b; font-size: 9px; letter-spacing: .08em; }.gantt-axis { position: relative; }.gantt-axis span { position: absolute; top: 12px; color: #5f737a; font-size: 10px; transform: translateX(-50%); white-space: nowrap; }.gantt-body { position: relative; }.gantt-row { height: 58px; border-bottom: 1px solid #edf1f1; }.gantt-row:last-child { border-bottom: 0; }.gantt-row.critical .gantt-label strong { color: #b54636; }.gantt-row .gantt-label { display: flex; flex-direction: column; justify-content: center; gap: 3px; }.gantt-row .gantt-label strong { color: #324850; font-size: 11px; }.gantt-row .gantt-label small { color: #94a3a7; font-size: 9px; }.gantt-track { position: relative; background: linear-gradient(90deg, rgba(242,246,246,.5) 1px, transparent 1px); }.gantt-track > i { position: absolute; top: 0; bottom: 0; width: 1px; background: #edf1f1; }.planned-bar, .scheduled-bar { position: absolute; min-width: 3px; border-radius: 2px; }.planned-bar { top: 11px; height: 7px; border: 1px dashed #9caaae; background: #edf1f1; }.scheduled-bar { top: 27px; height: 17px; background: linear-gradient(90deg, #078f7b, #24baa1); box-shadow: 0 2px 5px rgba(0,143,123,.18); }.scheduled-bar.conflicted { background: linear-gradient(90deg, #c75845, #df7966); }.scheduled-bar b { display: block; padding: 2px 5px; overflow: hidden; color: white; font-size: 8px; white-space: nowrap; font-weight: 500; }
 /* 依赖连线覆盖层必须显式占满时间轴。SVG 是替换元素，width:auto 会退回 300px
    默认视口，导致百分比坐标被压缩到左侧，无法落在任务条端点。 */
-.gantt-deps { position: absolute; left: 220px; top: 0; width: calc(100% - 220px); height: 100%; pointer-events: none; overflow: visible; }
+.gantt-deps { position: absolute; left: 220px; top: 0; width: calc(100% - 220px); height: 100%; pointer-events: none; overflow: visible; z-index: 2; }
 .gantt-deps .dependency-path { opacity: .82; }
 .gantt-deps .dep-line { stroke: #8fa1a8; stroke-width: 1.35; stroke-dasharray: 4 4; stroke-linecap: round; vector-effect: non-scaling-stroke; fill: none; }
 .gantt-deps .dep-line.final { stroke: #7f9299; }
 .gantt-row.critical .gantt-track { background-color: rgba(236, 247, 245, .38); }
 .gantt-row.critical .scheduled-bar { box-shadow: 0 2px 7px rgba(0, 143, 123, .25), 0 0 0 1px rgba(6, 128, 111, .08); }
+
+/* 表头锁定：顶部表头行随纵向滚动固定，左侧标签列随横向滚动固定。
+   sticky 元素必须有不透明背景，否则会透出滚动到其下方的内容。 */
+.gantt-header { position: sticky; top: 0; z-index: 6; }
+.gantt-label { position: sticky; left: 0; z-index: 4; background: white; }
+.gantt-header .gantt-label { z-index: 7; background: #f6f8f8; }
+.gantt-row.critical .gantt-label { background: #fbfdfc; }
+
+/* 甘特图全屏：卡片覆盖整个视口，内部滚动区占满剩余高度，
+   顶部表头与左侧列在全屏内滚动时保持锁定。 */
+.gantt-fullscreen-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #dbe5e6; border-radius: 5px; background: #f7fafa; color: #27636a; font-size: 11px; cursor: pointer; transition: border-color .15s, background .15s; }
+.gantt-fullscreen-toggle:hover { border-color: #09a88e; background: #eefaf7; }
+.gantt-fullscreen-toggle span { font-size: 13px; line-height: 1; }
+.gantt-card.gantt-fullscreen { position: fixed; inset: 0; z-index: 200; margin: 0; border-radius: 0; padding: 18px 22px; display: flex; flex-direction: column; background: white; box-shadow: none; overflow: hidden; }
+.gantt-card.gantt-fullscreen .gantt-scroll { flex: 1; overflow: auto; }
+.gantt-card.gantt-fullscreen .gantt-chart { min-height: 100%; }
 
 .resource-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }.resource-row { padding: 13px 0; border-top: 1px solid #edf1f1; }.resource-name, .resource-values { display: flex; align-items: center; justify-content: space-between; gap: 12px; }.resource-name strong { color: #354b53; font-size: 11px; }.resource-name small { color: #94a3a7; font-size: 9px; }.resource-values { margin-top: 7px; color: #83949a; font-size: 9px; }.resource-values b { color: #2a5358; font-size: 10px; }.wide-meter { height: 7px; margin-top: 6px; background: #e9eeee; border-radius: 8px; overflow: hidden; }.wide-meter span { display: block; height: 100%; background: #19a98f; border-radius: 8px; }.wide-meter span.warning { background: #d89c30; }.wide-meter span.danger { background: #d25d49; }
 .labor-row { min-height: 49px; display: grid; grid-template-columns: 110px 1fr 36px; gap: 10px; align-items: center; border-top: 1px solid #edf1f1; }.labor-row > span { color: #40565e; font-size: 10px; }.labor-row small { display: block; margin-top: 2px; color: #99a6aa; font-size: 8px; }.labor-row > div { height: 8px; border-radius: 8px; background: #edf1f1; overflow: hidden; }.labor-row i { display: block; height: 100%; border-radius: 8px; background: linear-gradient(90deg, #507fc1, #65a8d5); }.labor-row b { color: #476477; font-size: 10px; text-align: right; }

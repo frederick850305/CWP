@@ -44,6 +44,17 @@ const tasks = computed(() => result.value?.cwpGanttOutput?.tasks ?? [])
 const utilizations = computed(() => result.value?.monthlyWorkshopUtilization ?? [])
 const conflicts = computed(() => result.value?.resourceConflictList ?? [])
 const projects = computed(() => result.value?.projectCriticalPathOutput?.projects ?? [])
+
+// 项目交付健康度模糊检索：按项目名或项目 ID（projectCode）不区分大小写包含匹配。
+const projectHealthQuery = ref('')
+const filteredProjects = computed(() => {
+  const q = projectHealthQuery.value.trim().toLowerCase()
+  if (!q) return projects.value
+  return projects.value.filter(p =>
+    (p.projectName ?? '').toLowerCase().includes(q) ||
+    (p.projectCode ?? '').toLowerCase().includes(q)
+  )
+})
 const laborRows = computed(() => (result.value?.monthlyLaborDemandCurve ?? []).flatMap(month =>
   (month.byLocation ?? []).map(row => ({ ...row, month: month.month }))))
 const maxLabor = computed(() => Math.max(1, ...laborRows.value.map(item => Number(item.demand))))
@@ -672,13 +683,17 @@ onUnmounted(() => {
 
             <div v-if="activeTab === 'overview'" class="tab-panel overview-grid">
               <article class="content-card project-card">
-                <div class="card-heading"><div><p class="eyebrow">PROJECT HEALTH</p><h3>项目交付健康度</h3></div><span>共 {{ projects.length }} 个项目</span></div>
-                <div v-for="project in projects" :key="project.projectCode" class="project-row">
+                <div class="card-heading"><div><p class="eyebrow">PROJECT HEALTH</p><h3>项目交付健康度</h3></div><span>共 {{ filteredProjects.length }} 个项目</span></div>
+                <div class="project-search">
+                  <input v-model="projectHealthQuery" type="search" placeholder="输入项目名或 ID 模糊检索…" />
+                </div>
+                <div v-for="project in filteredProjects" :key="project.projectCode" class="project-row">
                   <div class="project-monogram">{{ project.projectName?.slice(0, 1) }}</div>
                   <div class="project-copy"><strong>{{ project.projectName }}</strong><small>{{ project.projectCode }}</small></div>
                   <div class="project-dates"><span>计划完工 <b>{{ formatDate(project.projectPlannedEnd) }}</b></span><span>排程完工 <b>{{ formatDate(project.projectScheduledEnd) }}</b></span></div>
                   <span class="on-time" :class="{ late: !project.isProjectFinishOnTime }">{{ project.isProjectFinishOnTime ? '按期' : '延期' }}</span>
                 </div>
+                <div v-if="!filteredProjects.length" class="inline-empty">未找到匹配「{{ projectHealthQuery }}」的项目</div>
               </article>
 
               <article class="content-card utilization-preview">

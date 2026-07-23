@@ -49,21 +49,20 @@ class ScheduleApiTest {
 
     @Test
     void listsAlgorithmsAndRoutesByCode() throws Exception {
-        // 算法清单接口：应返回 4 个已注册算法。
+        // 算法清单接口：应返回 3 个已注册算法（成本最优已移除，成本不作为排程条件）。
         mvc.perform(get("/api/v1/cwp-schedule-jobs/algorithms"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$.length()").value(3))
                 .andExpect(jsonPath("$[0].code").value("default"))
                 .andExpect(jsonPath("$[?(@.code == 'priority-first')]").exists())
-                .andExpect(jsonPath("$[?(@.code == 'earliest-start')]").exists())
-                .andExpect(jsonPath("$[?(@.code == 'cost-minimize')]").exists());
+                .andExpect(jsonPath("$[?(@.code == 'earliest-start')]").exists());
 
         // 方案 B：用 { algorithm, input } 包裹提交，结果应回显所用算法。
-        String body = "{\"algorithm\":\"cost-minimize\",\"input\":" + TestInputs.singleCapacityCwp() + "}";
+        String body = "{\"algorithm\":\"priority-first\",\"input\":" + TestInputs.singleCapacityCwp() + "}";
         String response = mvc.perform(post("/api/v1/cwp-schedule-jobs")
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.algorithm").value("cost-minimize"))
+                .andExpect(jsonPath("$.algorithm").value("priority-first"))
                 .andReturn().getResponse().getContentAsString();
         String jobId = mapper.readTree(response).path("jobId").asText();
         ScheduleJob job = service.get(jobId);
@@ -71,7 +70,7 @@ class ScheduleApiTest {
         assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
         mvc.perform(get("/api/v1/cwp-schedule-jobs/{jobId}/result", jobId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.algorithm").value("cost-minimize"))
+                .andExpect(jsonPath("$.algorithm").value("priority-first"))
                 .andExpect(jsonPath("$.algorithmDisplayName").exists());
 
         // 未知算法应回退到默认算法，仍可正常完成。

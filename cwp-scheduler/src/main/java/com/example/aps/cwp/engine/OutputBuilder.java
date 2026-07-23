@@ -54,7 +54,20 @@ final class OutputBuilder {
         root.set("assemblyStationGanttOutput", assemblyGantt(model, scheduled));
         root.set("cwpGanttOutput", cwpGantt(model, scheduled));
         root.set("scheduleSummary", summary(model, scheduled, ledger, utilization, conflicts, warnings, runtimeMillis));
+        root.set("costModel", costModelNode(model));
         return root;
+    }
+
+    /** 输出 costModel 说明块：成本仅作展示指标，不作为排程条件（单价来源由 sourceMode 决定）。 */
+    private ObjectNode costModelNode(Model model) {
+        ObjectNode n = mapper.createObjectNode();
+        n.put("enabled", model.cost.enabled);
+        n.put("sourceMode", model.cost.sourceMode);
+        String desc = model.cost.description;
+        if (desc == null || desc.isEmpty())
+            desc = "总成本由人工成本、资源占用成本和锁定调整成本组成，具体单价由主数据提供。";
+        n.put("description", desc);
+        return n;
     }
 
     /** 月度产能利用率：按资源组与月份汇总已用产能并除以基线。 */
@@ -98,7 +111,10 @@ final class OutputBuilder {
             String[] p = key.split("\\|"); ArrayNode locations = months.get(p[0]);
             if (locations == null) { locations = mapper.createArrayNode(); months.put(p[0], locations); }
             Sum s = sums.get(key); ObjectNode n = locations.addObject(); n.put("locationCode", p[1]); n.put("locationName", s.name);
-            BigDecimal average = BigDecimal.valueOf(s.persons).divide(BigDecimal.valueOf(s.active.size()), 2, RoundingMode.HALF_UP);
+            // 某月某地点下所有 labor 条目人数都为 0（例如 100% 完工 CWP 不再产生人力需求）时，
+            // active 集合为空，分母为 0 会抛 ArithmeticException。此时直接以 0 作为需求，避免崩溃。
+            BigDecimal average = s.active.isEmpty() ? BigDecimal.ZERO
+                    : BigDecimal.valueOf(s.persons).divide(BigDecimal.valueOf(s.active.size()), 2, RoundingMode.HALF_UP);
             n.set("demand", number(average));
         }
         ArrayNode out = mapper.createArrayNode();
@@ -220,18 +236,18 @@ final class OutputBuilder {
             p.put("isProjectFinishOnTime", scheduledEnd != null && !scheduledEnd.isAfter(project.plannedEnd));
             ArrayNode critical = p.putArray("criticalPathCwps"); Set<String> criticalCodes = new HashSet<String>();
             for (ScheduledTask t : tasks) {
-                LocalDate latestStart = latestEnd.get(t.cwp.code).minusDays(t.cwp.duration - 1L);
+                LocalDate latestStart = latestEnd.get(t.cwp.key).minusDays(t.cwp.duration - 1L);
                 long floatDays = ChronoUnit.DAYS.between(t.start, latestStart);
                 if (floatDays != 0) continue;
-                criticalCodes.add(t.cwp.code); ObjectNode c = critical.addObject();
+                criticalCodes.add(t.cwp.key); ObjectNode c = critical.addObject();
                 c.put("cwpCode", t.cwp.code); c.put("cwpName", t.cwp.name); c.put("plannedStart", t.cwp.plannedStartText);
                 c.put("plannedEnd", t.cwp.plannedEndText); c.put("scheduledStart", Domain.atStart(t.start, zone));
                 c.put("scheduledEnd", Domain.atStart(t.end, zone)); c.put("totalFloatDays", floatDays); c.put("isCritical", true);
                 c.put("criticalReason", "总时差为0，任何后移都会消耗项目完工约束。");
             }
             ArrayNode links = p.putArray("pathLinks");
-            for (ScheduledTask t : tasks) for (Dependency d : t.cwp.dependencies) if (criticalCodes.contains(t.cwp.code) && criticalCodes.contains(d.predecessor)) {
-                ObjectNode l = links.addObject(); l.put("fromCwpCode", d.predecessor); l.put("toCwpCode", t.cwp.code);
+            for (ScheduledTask t : tasks) for (Dependency d : t.cwp.dependencies) if (criticalCodes.contains(t.cwp.key) && criticalCodes.contains(d.predecessor)) {
+                ObjectNode l = links.addObject(); l.put("fromCwpCode", d.predecessorCwpCode); l.put("toCwpCode", t.cwp.code);
                 l.put("relation", d.relation); l.put("lagDays", d.lag);
             }
         }
@@ -248,10 +264,10 @@ final class OutputBuilder {
             if (current == null || t.end.isAfter(current)) forecastEndByProject.put(t.cwp.projectCode, t.end);
         }
         Map<String, LocalDate> latest = new HashMap<String, LocalDate>();
-        for (ScheduledTask t : scheduled.values()) latest.put(t.cwp.code, forecastEndByProject.get(t.cwp.projectCode));
+        for (ScheduledTask t : scheduled.values()) latest.put(t.cwp.key, forecastEndByProject.get(t.cwp.projectCode));
         List<ScheduledTask> reverse = new ArrayList<ScheduledTask>(scheduled.values()); Collections.reverse(reverse);
         for (int iteration = 0; iteration < reverse.size(); iteration++) for (ScheduledTask succ : reverse) {
-            LocalDate succEnd = latest.get(succ.cwp.code); LocalDate succStart = succEnd.minusDays(succ.cwp.duration - 1L);
+            LocalDate succEnd = latest.get(succ.cwp.key); LocalDate succStart = succEnd.minusDays(succ.cwp.duration - 1L);
             for (Dependency d : succ.cwp.dependencies) {
                 ScheduledTask pred = scheduled.get(d.predecessor); if (pred == null) continue;
                 LocalDate bound;
@@ -259,7 +275,7 @@ final class OutputBuilder {
                 else if ("SS".equals(d.relation)) bound = succStart.minusDays(d.lag).plusDays(pred.cwp.duration - 1L);
                 else if ("FF".equals(d.relation)) bound = succEnd.minusDays(d.lag);
                 else bound = succEnd.minusDays(d.lag).plusDays(pred.cwp.duration - 1L);
-                if (bound.isBefore(latest.get(pred.cwp.code))) latest.put(pred.cwp.code, bound);
+                if (bound.isBefore(latest.get(pred.cwp.key))) latest.put(pred.cwp.key, bound);
             }
         }
         return latest;
@@ -308,17 +324,17 @@ final class OutputBuilder {
         Map<String, LocalDate> latestEnd = calculateLatestEnds(model, scheduled);
         Set<String> criticalCodes = new HashSet<String>();
         for (ScheduledTask t : scheduled.values()) {
-            LocalDate latestStart = latestEnd.get(t.cwp.code).minusDays(t.cwp.duration - 1L);
-            if (ChronoUnit.DAYS.between(t.start, latestStart) == 0) criticalCodes.add(t.cwp.code);
+            LocalDate latestStart = latestEnd.get(t.cwp.key).minusDays(t.cwp.duration - 1L);
+            if (ChronoUnit.DAYS.between(t.start, latestStart) == 0) criticalCodes.add(t.cwp.key);
         }
         // 依赖连线：遍历所有 dependencies，标出两端均处于关键路径的连线为关键路径连线。
         ArrayNode links = out.putArray("dependencyLinks");
         for (ScheduledTask succ : scheduled.values()) for (Dependency d : succ.cwp.dependencies) {
             if (!scheduled.containsKey(d.predecessor)) continue;
             ObjectNode l = links.addObject();
-            l.put("fromCwpCode", d.predecessor); l.put("toCwpCode", succ.cwp.code);
+            l.put("fromCwpCode", d.predecessorCwpCode); l.put("toCwpCode", succ.cwp.code);
             l.put("relation", d.relation); l.put("lagDays", d.lag);
-            l.put("critical", criticalCodes.contains(d.predecessor) && criticalCodes.contains(succ.cwp.code));
+            l.put("critical", criticalCodes.contains(d.predecessor) && criticalCodes.contains(succ.cwp.key));
         }
         ArrayNode tasks=out.putArray("tasks");
         for(ScheduledTask t:scheduled.values()){
@@ -333,7 +349,7 @@ final class OutputBuilder {
             ArrayNode deps=n.putArray("dependencies");
             for (Dependency d : t.cwp.dependencies) {
                 ObjectNode dep=deps.addObject();
-                dep.put("predecessorCwpCode", d.predecessor); dep.put("relation", d.relation); dep.put("lagDays", d.lag);
+                dep.put("predecessorCwpCode", d.predecessorCwpCode); dep.put("relation", d.relation); dep.put("lagDays", d.lag);
             }
             n.put("isCritical", criticalCodes.contains(t.cwp.code));
         }

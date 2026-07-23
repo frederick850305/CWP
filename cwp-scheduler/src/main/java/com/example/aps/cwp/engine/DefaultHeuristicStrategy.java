@@ -7,6 +7,7 @@ import com.example.aps.cwp.engine.Domain.ScheduledTask;
 import com.example.aps.cwp.rules.SolverRules;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -55,20 +56,19 @@ public class DefaultHeuristicStrategy implements ScheduleStrategy {
             int cmp = lexicographicBetter(vc, vb); // >0 表示 candidate 更优
             return -cmp; // 转成 Comparator 约定：<0 表示 candidate 更优
         }
-        // 单目标：计划日期偏差成本，越低越好。
-        BigDecimal cc = trialCandidate.incrementalCost(candidate);
-        BigDecimal cb = trialBest.incrementalCost(best);
-        return cc.compareTo(cb);
+        // 单目标：计划日期偏差天数，越低越好（成本不作为排程条件，不乘成本单价）。
+        long cd = Math.abs(ChronoUnit.DAYS.between(candidate.cwp.plannedStart, candidate.start));
+        long bd = Math.abs(ChronoUnit.DAYS.between(best.cwp.plannedStart, best.start));
+        return Long.compare(cd, bd);
     }
 
     @Override
     public boolean earlyStop(ScheduledTask candidate, Ledger trial, Model model) {
-        // 仅在单目标（未启用多目标优化）时早停：候选正好落在原计划日且偏差成本为 0 即视为最优。
+        // 仅在单目标（未启用多目标优化）时早停：候选正好落在原计划日（偏差 0 天）即视为最优。
         // 多目标下不早停，需枚举全部候选日期才能选出词典序全局最优（否则会像旧版一样提前 break）。
         boolean multiObjective = model.objectivesEnabled && !model.objectives.isEmpty();
         if (multiObjective) return false;
-        return candidate.start.equals(candidate.cwp.plannedStart)
-                && trial.incrementalCost(candidate).compareTo(BigDecimal.ZERO) == 0;
+        return candidate.start.equals(candidate.cwp.plannedStart);
     }
 
     /** 将候选在试排台账上的表现映射为目标向量；MINIMIZE 方向取相反数，使“越大越好”统一。 */
@@ -78,7 +78,7 @@ public class DefaultHeuristicStrategy implements ScheduleStrategy {
             BigDecimal v;
             if ("projectPriorityScore".equals(o.metric)) v = BigDecimal.valueOf(trial.priorityContribution(cand, model));
             else if ("avgWorkshopCapacityUtilization".equals(o.metric)) v = trial.avgUtilization();
-            else if ("totalScheduleCost".equals(o.metric)) v = trial.costOf(cand, model);
+            else if ("totalScheduleCost".equals(o.metric)) v = BigDecimal.ZERO; // 成本仅为输出指标，不参与排程排序
             else v = BigDecimal.ZERO;
             if (o.direction != null && o.direction.trim().equalsIgnoreCase("minimize")) v = v.negate();
             vec.add(v);

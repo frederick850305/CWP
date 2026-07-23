@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import sampleInput from '../../examples/cwp-schedule-test.json'
 
 const API = '/api/v1/cwp-schedule-jobs'
@@ -124,6 +124,7 @@ function showConflictList() {
 function handleGanttKeydown(event) {
   if (event.key !== 'Escape') return
   if (selectedConflictTask.value) closeTaskConflict()
+  else if (selectedDepKey.value) clearDependencyHighlight()
   else if (ganttFullscreen.value) toggleGanttFullscreen()
 }
 
@@ -231,6 +232,87 @@ const ganttDependencyLines = computed(() => {
   }
   return out
 })
+
+// 点击关键路径依赖虚线：聚焦其所在的整条关键路径（沿关键 FS 依赖双向追溯），
+// 其余节点与连线虚化，便于一眼看清关键路径全貌。
+const selectedDepKey = ref(null)
+const highlightedTasks = ref(new Set())
+const highlightedLinks = ref(new Set())
+
+function clearDependencyHighlight() {
+  selectedDepKey.value = null
+  highlightedTasks.value = new Set()
+  highlightedLinks.value = new Set()
+}
+
+/** 点击某条依赖线后：
+ *  1) 沿前驱（FS 上游）向上追溯，找到这条线「最顶端的出发节点」；
+ *  2) 再从顶端出发，沿后继（FS 下游）单向向下逐步求索，直到最末节点；
+ *  仅高亮这条从上到下的整条链路。 */
+function collectCriticalChain(startLink) {
+  const links = dependencyLinks.value
+  const successors = new Map()
+  const predecessors = new Map()
+  for (const link of links) {
+    const from = link.fromCwpKey || link.fromCwpCode
+    const to = link.toCwpKey || link.toCwpCode
+    if (!successors.has(from)) successors.set(from, [])
+    successors.get(from).push(link)
+    if (!predecessors.has(to)) predecessors.set(to, [])
+    predecessors.get(to).push(link)
+  }
+  const keyOf = (link) => ganttDependencyKey(link)
+  const endpointOf = (link, side) => side === 'from' ? (link.fromCwpKey || link.fromCwpCode) : (link.toCwpKey || link.toCwpCode)
+
+  // 1) 沿前驱向上找到最顶端的出发节点
+  let source = endpointOf(startLink, 'from')
+  const upVisited = new Set([source])
+  while (true) {
+    const prevs = predecessors.get(source) || []
+    if (prevs.length === 0) break
+    const prev = prevs[0]
+    const next = endpointOf(prev, 'from')
+    if (upVisited.has(next)) break
+    upVisited.add(next)
+    source = next
+  }
+
+  // 2) 从顶端出发，沿后继（向下）遍历整条链路
+  const tasks = new Set([source])
+  const linkKeys = new Set()
+  const visitedLinks = new Set()
+  const visitedTasks = new Set([source])
+  const queue = [source]
+  while (queue.length) {
+    const current = queue.shift()
+    for (const link of successors.get(current) || []) {
+      const k = keyOf(link)
+      if (visitedLinks.has(k)) continue
+      visitedLinks.add(k)
+      linkKeys.add(k)
+      const to = endpointOf(link, 'to')
+      tasks.add(to)
+      if (!visitedTasks.has(to)) {
+        visitedTasks.add(to)
+        queue.push(to)
+      }
+    }
+  }
+  return { tasks, links: linkKeys }
+}
+
+function selectDependency(line) {
+  const key = ganttDependencyKey(line)
+  if (selectedDepKey.value === key) { clearDependencyHighlight(); return }
+  const chain = collectCriticalChain(line)
+  highlightedTasks.value = chain.tasks
+  highlightedLinks.value = chain.links
+  selectedDepKey.value = key
+}
+
+// 切换项目或重新排程时，关键路径聚焦随之失效，自动清除。
+watch(selectedProject, clearDependencyHighlight)
+watch(result, clearDependencyHighlight)
 
 // 资源类型筛选与分组条形图数据
 const selectedResourceType = ref('all')
@@ -910,6 +992,12 @@ onUnmounted(() => {
                     </button>
                   </div>
                 </div>
+                <transition name="fade">
+                  <div v-if="selectedDepKey" class="dep-focus-banner">
+                    <span><b>关键路径聚焦</b> · 已高亮该依赖所在的关键路径节点，其余信息已虚化</span>
+                    <button type="button" @click="clearDependencyHighlight">取消聚焦</button>
+                  </div>
+                </transition>
                 <div v-if="filteredTasks.length" class="gantt-scroll">
                   <div class="gantt-chart">
                     <div class="gantt-header">
@@ -919,7 +1007,7 @@ onUnmounted(() => {
                       </div>
                     </div>
                     <div class="gantt-body">
-                      <div v-for="task in filteredTasks" :key="ganttTaskKey(task)" class="gantt-row" :class="{ critical: task.isCritical, 'zero-workload': task.zeroWorkload }">
+                      <div v-for="task in filteredTasks" :key="ganttTaskKey(task)" class="gantt-row" :class="{ critical: task.isCritical, 'zero-workload': task.zeroWorkload, 'is-highlighted': highlightedTasks.has(ganttTaskKey(task)), 'is-dimmed': selectedDepKey && !highlightedTasks.has(ganttTaskKey(task)) }">
                         <div class="gantt-label"><strong>{{ task.cwpName }}</strong><small>{{ task.cwpCode }} · {{ task.zeroWorkload ? '零工程量 · 不占资源' : task.allocatedResourceGroupId }}</small></div>
                         <div class="gantt-track">
                           <i v-for="tick in ganttRange.ticks" :key="tick.label + tick.offset" :style="{ left: `${tick.offset}%` }"></i>
@@ -934,21 +1022,30 @@ onUnmounted(() => {
                           </span>
                         </div>
                       </div>
-                      <svg class="gantt-deps" aria-hidden="true">
+                      <svg class="gantt-deps" :class="{ 'has-focus': selectedDepKey }" aria-hidden="true">
                         <defs>
                           <marker id="gantt-dependency-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse" overflow="visible">
                             <path d="M1,1 L7,4 L1,7" fill="none" stroke="#7f9299" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                          </marker>
+                          <marker id="gantt-dependency-arrow-active" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse" overflow="visible">
+                            <path d="M1,1 L7,4 L1,7" fill="none" stroke="#e8901a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
                           </marker>
                           <marker id="gantt-zero-dependency-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse" overflow="visible">
                             <path d="M1,1 L7,4 L1,7" fill="none" stroke="#7655b5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
                           </marker>
                         </defs>
-                        <g v-for="line in ganttDependencyLines" :key="ganttDependencyKey(line)" class="dependency-path" :class="{ 'zero-workload-dependency': line.involvesZeroWorkload }">
-                          <title>{{ line.fromCwpCode }} → {{ line.toCwpCode }}（{{ line.relation }}{{ line.lagDays ? ' +' + line.lagDays + 'd' : '' }}）{{ line.involvesZeroWorkload ? ' · 包含零工程量 CWP' : line.critical ? ' · 关键路径' : '' }}</title>
-                          <line v-for="(segment, segmentIndex) in line.segments" :key="segmentIndex"
+                        <g v-for="line in ganttDependencyLines" :key="ganttDependencyKey(line)" class="dependency-path"
+                          :class="{ 'zero-workload-dependency': line.involvesZeroWorkload, 'is-highlighted': highlightedLinks.has(ganttDependencyKey(line)), 'is-dimmed': selectedDepKey && !highlightedLinks.has(ganttDependencyKey(line)) }"
+                          @click="selectDependency(line)" @keydown.enter="selectDependency(line)" @keydown.space.prevent="selectDependency(line)" tabindex="0" role="button"
+                          :aria-label="`聚焦 ${line.fromCwpCode} → ${line.toCwpCode} 关键路径`">
+                          <title>{{ line.fromCwpCode }} → {{ line.toCwpCode }}（{{ line.relation }}{{ line.lagDays ? ' +' + line.lagDays + 'd' : '' }}）{{ line.involvesZeroWorkload ? ' · 包含零工程量 CWP' : line.critical ? ' · 关键路径' : '' }}{{ selectedDepKey && highlightedLinks.has(ganttDependencyKey(line)) ? ' · 已聚焦' : '' }}</title>
+                          <line v-for="(segment, segmentIndex) in line.segments" :key="`hit-${segmentIndex}`"
+                            :x1="`${segment.x1}%`" :y1="`${segment.y1}%`" :x2="`${segment.x2}%`" :y2="`${segment.y2}%`"
+                            class="dep-hit" />
+                          <line v-for="(segment, segmentIndex) in line.segments" :key="`vis-${segmentIndex}`"
                             :x1="`${segment.x1}%`" :y1="`${segment.y1}%`" :x2="`${segment.x2}%`" :y2="`${segment.y2}%`"
                             class="dep-line" :class="{ final: segment.arrow }"
-                            :marker-end="segment.arrow ? (line.involvesZeroWorkload ? 'url(#gantt-zero-dependency-arrow)' : 'url(#gantt-dependency-arrow)') : null" />
+                            :marker-end="segment.arrow ? (line.involvesZeroWorkload ? 'url(#gantt-zero-dependency-arrow)' : (highlightedLinks.has(ganttDependencyKey(line)) ? 'url(#gantt-dependency-arrow-active)' : 'url(#gantt-dependency-arrow)')) : null" />
                         </g>
                       </svg>
                     </div>

@@ -551,27 +551,54 @@ function showToast(message) {
   window.setTimeout(() => { if (toast.value === message) toast.value = '' }, 3200)
 }
 
-async function downloadResult() {
-  const jobId = currentJob.value?.jobId
-  if (!result.value || !jobId) return
-  try {
-    const response = await fetch(`${API}/${jobId}/result/download`)
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}))
-      throw new Error(body.message || body.failureReason || `导出失败（HTTP ${response.status}）`)
+// 导出 JSON 须严格遵循《四级计划CWP排程输出字段说明》：仅包含规范定义的 8 个顶层段，
+// 不含 scheduleSummary / costModel 等展示性附加段。
+const EXPORT_SEGMENTS = [
+  'monthlyWorkshopUtilization',
+  'monthlyLaborDemandCurve',
+  'cwpDailyLaborDemandByTrade',
+  'resourceConflictList',
+  'projectCriticalPathOutput',
+  'prefabStationGanttOutput',
+  'assemblyStationGanttOutput',
+  'cwpGanttOutput',
+]
+
+/** 从排程结果中按规范 8 段组装导出载荷，跳过缺失段。 */
+function buildExportPayload() {
+  const payload = {}
+  if (result.value) {
+    for (const key of EXPORT_SEGMENTS) {
+      if (result.value[key] !== undefined) payload[key] = result.value[key]
     }
-    const blob = await response.blob()
+  }
+  return payload
+}
+
+/** 生成带本地时间戳的文件名：cwp-schedule-YYYYMMDD-HHmmss.json。 */
+function exportFileName() {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+  return `cwp-schedule-${stamp}.json`
+}
+
+async function downloadResult() {
+  if (!result.value) return
+  try {
+    const payload = buildExportPayload()
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a')
     anchor.href = url
-    anchor.download = `cwp-schedule-${jobId}.json`
+    anchor.download = exportFileName()
     document.body.appendChild(anchor)
     anchor.click()
     anchor.remove()
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     showToast('排程结果 JSON 已导出')
   } catch (cause) {
-    error.value = cause.message
+    error.value = cause?.message || '导出失败'
   }
 }
 
@@ -790,7 +817,7 @@ onUnmounted(() => {
                 </div>
                 <p>任务 {{ currentJob?.jobId }} · 算法 {{ result.algorithmDisplayName || currentJob?.algorithm || '默认启发式' }} · 完成于 {{ formatDateTime(currentJob?.completedAt) }}</p>
               </div>
-              <button class="download-button" type="button" @click="downloadResult">↓ 导出结果 JSON</button>
+              <button class="download-button" type="button" @click="downloadResult">↓ 导出 JSON</button>
             </div>
 
             <div class="metric-grid">

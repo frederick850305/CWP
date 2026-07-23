@@ -340,6 +340,10 @@ function ganttStyle(task, type) {
   const start = new Date(toDay(task[type === 'planned' ? 'plannedStart' : 'scheduledStart']))
   const end = new Date(toDay(task[type === 'planned' ? 'plannedEnd' : 'scheduledEnd']))
   const left = dayDiff(ganttRange.value.start, start) / ganttRange.value.days * 100
+  if (task.zeroWorkload) {
+    // 零工程量 CWP 是日期锚点而非持续任务：用窄条呈现，不按原计划起止日期拉宽。
+    return { left: `${left}%`, width: '0.45%' }
+  }
   const width = (dayDiff(start, end) + 1) / ganttRange.value.days * 100
   return { left: `${left}%`, width: `${Math.max(width, 1.2)}%` }
 }
@@ -897,6 +901,7 @@ onUnmounted(() => {
                       <span class="planned-key">计划</span>
                       <span class="scheduled-key">排程</span>
                       <span class="conflict-key" title="点击冲突排程条可查看详情">冲突</span>
+                      <span class="zero-workload-key">零工程量 CWP / 虚线 FS</span>
                       <span class="dep-key">关键路径（FS）</span>
                     </div>
                     <button type="button" class="gantt-fullscreen-toggle" @click="toggleGanttFullscreen"
@@ -914,12 +919,13 @@ onUnmounted(() => {
                       </div>
                     </div>
                     <div class="gantt-body">
-                      <div v-for="task in filteredTasks" :key="ganttTaskKey(task)" class="gantt-row" :class="{ critical: task.isCritical }">
-                        <div class="gantt-label"><strong>{{ task.cwpName }}</strong><small>{{ task.cwpCode }} · {{ task.allocatedResourceGroupId }}</small></div>
+                      <div v-for="task in filteredTasks" :key="ganttTaskKey(task)" class="gantt-row" :class="{ critical: task.isCritical, 'zero-workload': task.zeroWorkload }">
+                        <div class="gantt-label"><strong>{{ task.cwpName }}</strong><small>{{ task.cwpCode }} · {{ task.zeroWorkload ? '零工程量 · 不占资源' : task.allocatedResourceGroupId }}</small></div>
                         <div class="gantt-track">
                           <i v-for="tick in ganttRange.ticks" :key="tick.label + tick.offset" :style="{ left: `${tick.offset}%` }"></i>
-                          <span class="planned-bar" :style="ganttStyle(task, 'planned')"></span>
-                          <span class="scheduled-bar" :class="{ conflicted: task.status !== 'scheduled' }" :style="ganttStyle(task, 'scheduled')"
+                          <span class="planned-bar" :class="{ 'zero-workload': task.zeroWorkload }" :style="ganttStyle(task, 'planned')"></span>
+                          <span class="scheduled-bar" :class="{ conflicted: task.status !== 'scheduled', 'zero-workload': task.zeroWorkload }" :style="ganttStyle(task, 'scheduled')"
+                            :title="task.zeroWorkload ? `${task.cwpCode} · 零工程量 CWP（不占资源和时间）` : undefined"
                             :role="task.status !== 'scheduled' ? 'button' : undefined"
                             :tabindex="task.status !== 'scheduled' ? 0 : undefined"
                             :aria-label="task.status !== 'scheduled' ? `查看 ${task.cwpCode} 的排程冲突详情` : undefined"
@@ -933,13 +939,16 @@ onUnmounted(() => {
                           <marker id="gantt-dependency-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse" overflow="visible">
                             <path d="M1,1 L7,4 L1,7" fill="none" stroke="#7f9299" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
                           </marker>
+                          <marker id="gantt-zero-dependency-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse" overflow="visible">
+                            <path d="M1,1 L7,4 L1,7" fill="none" stroke="#7655b5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                          </marker>
                         </defs>
-                        <g v-for="line in ganttDependencyLines" :key="ganttDependencyKey(line)" class="dependency-path">
-                          <title>{{ line.fromCwpCode }} → {{ line.toCwpCode }}（{{ line.relation }}{{ line.lagDays ? ' +' + line.lagDays + 'd' : '' }}）{{ line.critical ? ' · 关键路径' : '' }}</title>
+                        <g v-for="line in ganttDependencyLines" :key="ganttDependencyKey(line)" class="dependency-path" :class="{ 'zero-workload-dependency': line.involvesZeroWorkload }">
+                          <title>{{ line.fromCwpCode }} → {{ line.toCwpCode }}（{{ line.relation }}{{ line.lagDays ? ' +' + line.lagDays + 'd' : '' }}）{{ line.involvesZeroWorkload ? ' · 包含零工程量 CWP' : line.critical ? ' · 关键路径' : '' }}</title>
                           <line v-for="(segment, segmentIndex) in line.segments" :key="segmentIndex"
                             :x1="`${segment.x1}%`" :y1="`${segment.y1}%`" :x2="`${segment.x2}%`" :y2="`${segment.y2}%`"
                             class="dep-line" :class="{ final: segment.arrow }"
-                            :marker-end="segment.arrow ? 'url(#gantt-dependency-arrow)' : null" />
+                            :marker-end="segment.arrow ? (line.involvesZeroWorkload ? 'url(#gantt-zero-dependency-arrow)' : 'url(#gantt-dependency-arrow)') : null" />
                         </g>
                       </svg>
                     </div>

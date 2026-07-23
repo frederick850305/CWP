@@ -126,6 +126,7 @@ final class Domain {
         String plannedEndText;
         boolean locked;
         int duration;
+        boolean zeroWorkload;
         BigDecimal totalWorkload;
         BigDecimal progress;
         BigDecimal remaining;
@@ -267,6 +268,7 @@ final class Domain {
             c.plannedEnd = date(c.plannedEndText, zone); c.locked = n.path("isLocked").asBoolean(false);
             c.duration = (int) ChronoUnit.DAYS.between(c.plannedStart, c.plannedEnd) + 1;
             c.totalWorkload = decimal(n.path("workload"), "totalAmount");
+            c.zeroWorkload = c.totalWorkload.compareTo(BigDecimal.ZERO) == 0;
             c.progress = decimal(n.path("workload"), "progress");
             c.remaining = c.totalWorkload.multiply(BigDecimal.ONE.subtract(c.progress));
             c.workloadUnit = text(n.path("workload"), "unit");

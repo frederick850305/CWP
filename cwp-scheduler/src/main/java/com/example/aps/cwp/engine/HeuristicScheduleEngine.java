@@ -138,7 +138,7 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
                                             Map<String, ScheduledTask> scheduled,
                                             Map<String, Cwp> cwpByCode, long deadlineMillis, final SolverRules rules) {
         Project project = model.projects.get(cwp.projectCode);
-        LocalDate latest = project.plannedEnd.minusDays(cwp.duration - 1L);
+        LocalDate latest = project.plannedEnd.minusDays(schedulingSpanDays(cwp));
         LocalDate earliest = model.horizonStart;
         LocalDate dependencyStart = dependencyAdjustedStart(cwp, earliest, scheduled, cwpByCode);
         if (dependencyStart.isAfter(earliest)) earliest = dependencyStart;
@@ -172,13 +172,21 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
     /** 构造一个以 start 为起点的候选任务（含工序到资源组的绑定）。 */
     private ScheduledTask candidate(Cwp cwp, LocalDate start, Model model) {
         ScheduledTask task = new ScheduledTask(); task.cwp = cwp; task.start = start;
-        task.end = start.plusDays(cwp.duration - 1L);
+        // 零工程量 CWP 是零工期节点：用同一天的起止日期承载甘特图锚点，
+        // 但依赖计算不会把它当作一个占用日。
+        task.end = cwp.zeroWorkload ? start : start.plusDays(cwp.duration - 1L);
         for (Operation op : cwp.operations) task.operationResource.put(op.code, op.resourceGroupId);
         return task;
     }
 
     /** 将候选任务实际落位到台账：选资源(含替代)、校验人力与占用，并登记占用。strict=false 时仅记录冲突不拒绝。 */
     private boolean place(ScheduledTask task, Model model, Ledger ledger, boolean strict, SolverRules rules) {
+        if (task.cwp.zeroWorkload) {
+            // 零工程量节点只参与日期与依赖计算，不选择或占用任何资源。
+            task.operationResource.clear();
+            ledger.reserveTask(task);
+            return true;
+        }
         Map<String, String> chosen = new LinkedHashMap<String, String>();
         for (Operation op : task.cwp.operations) {
             ResourceGroup primary = model.groups.get(op.resourceGroupId);
@@ -226,7 +234,7 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
     private void allocateAssemblyUnits(Model model, Map<String, ScheduledTask> scheduled, Ledger ledger) {
         // 同一单体下的多个 CWP 共用一块总装网格，占用周期取这些 CWP 的最早开始至最晚结束。
         Map<String, List<ScheduledTask>> units = new LinkedHashMap<String, List<ScheduledTask>>();
-        for (ScheduledTask task : scheduled.values()) if (task.cwp.unit != null) {
+        for (ScheduledTask task : scheduled.values()) if (!task.cwp.zeroWorkload && task.cwp.unit != null) {
             List<ScheduledTask> list = units.get(task.cwp.unit.code);
             if (list == null) { list = new ArrayList<ScheduledTask>(); units.put(task.cwp.unit.code, list); }
             list.add(task);
@@ -272,20 +280,30 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
             if (pred == null) continue;
             LocalDate required;
             // 支持 FS、SS、FF、SF 四种依赖关系以及正负时滞。
-            if ("FS".equals(d.relation)) required = pred.end.plusDays(d.lag + 1L);
+            if ("FS".equals(d.relation)) required = pred.end.plusDays(d.lag + fsBoundaryDays(pred.cwp));
             else if ("SS".equals(d.relation)) required = pred.start.plusDays(d.lag);
-            else if ("FF".equals(d.relation)) required = pred.end.plusDays(d.lag).minusDays(cwp.duration - 1L);
-            else required = pred.start.plusDays(d.lag).minusDays(cwp.duration - 1L);
+            else if ("FF".equals(d.relation)) required = pred.end.plusDays(d.lag).minusDays(schedulingSpanDays(cwp));
+            else required = pred.start.plusDays(d.lag).minusDays(schedulingSpanDays(cwp));
             if (required.isAfter(result)) result = required;
         }
         return result;
     }
 
     static boolean dependencySatisfied(ScheduledTask pred, ScheduledTask succ, Dependency d) {
-        if ("FS".equals(d.relation)) return !succ.start.isBefore(pred.end.plusDays(d.lag + 1L));
+        if ("FS".equals(d.relation)) return !succ.start.isBefore(pred.end.plusDays(d.lag + fsBoundaryDays(pred.cwp)));
         if ("SS".equals(d.relation)) return !succ.start.isBefore(pred.start.plusDays(d.lag));
         if ("FF".equals(d.relation)) return !succ.end.isBefore(pred.end.plusDays(d.lag));
         return !succ.end.isBefore(pred.start.plusDays(d.lag));
+    }
+
+    /** 普通任务按自然日闭区间排程，FS 后继从下一天开始；零工期节点不额外占一天。 */
+    private static long fsBoundaryDays(Cwp predecessor) {
+        return predecessor.zeroWorkload ? 0L : 1L;
+    }
+
+    /** 任务起止为闭区间；零工程量节点跨度为 0，其余任务跨度为 duration-1。 */
+    private static long schedulingSpanDays(Cwp cwp) {
+        return cwp.zeroWorkload ? 0L : cwp.duration - 1L;
     }
 
     /**
@@ -328,20 +346,20 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
         Collections.reverse(reverse);
         for (int iteration = 0; iteration < reverse.size(); iteration++) for (Cwp succ : reverse) {
             LocalDate succEnd = latestEnd.get(succ.key);
-            LocalDate succStart = succEnd.minusDays(succ.duration - 1L);
+            LocalDate succStart = succEnd.minusDays(schedulingSpanDays(succ));
             for (Dependency d : succ.dependencies) {
                 Cwp pred = byCode.get(d.predecessor); if (pred == null) continue;
                 LocalDate bound;
-                if ("FS".equals(d.relation)) bound = succStart.minusDays(d.lag + 1L);
-                else if ("SS".equals(d.relation)) bound = succStart.minusDays(d.lag).plusDays(pred.duration - 1L);
+                if ("FS".equals(d.relation)) bound = succStart.minusDays(d.lag + fsBoundaryDays(pred));
+                else if ("SS".equals(d.relation)) bound = succStart.minusDays(d.lag).plusDays(schedulingSpanDays(pred));
                 else if ("FF".equals(d.relation)) bound = succEnd.minusDays(d.lag);
-                else bound = succEnd.minusDays(d.lag).plusDays(pred.duration - 1L);
+                else bound = succEnd.minusDays(d.lag).plusDays(schedulingSpanDays(pred));
                 if (bound.isBefore(latestEnd.get(pred.key))) latestEnd.put(pred.key, bound);
             }
         }
         Set<String> critical = new HashSet<String>();
         for (Cwp c : model.cwps) {
-            LocalDate latestStart = latestEnd.get(c.key).minusDays(c.duration - 1L);
+            LocalDate latestStart = latestEnd.get(c.key).minusDays(schedulingSpanDays(c));
             if (latestStart.equals(c.plannedStart)) critical.add(c.code);
         }
         return critical;

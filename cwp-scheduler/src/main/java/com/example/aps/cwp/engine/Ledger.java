@@ -70,7 +70,7 @@ class Ledger {
         }
 
         boolean canUseLabor(ScheduledTask task, boolean strict) {
-            // 人力需求由工序日均工作量和人均日能力向上取整，并逐日校验地点上限。
+            // 人力需求 = 工序日均工作量 × 每单位工作量每天所需人数（向上取整），并逐日校验地点上限。
             if (!strict) return true;
             Map<String, Integer> addedByLocation = laborPerLocation(task);
             for (Map.Entry<String, Integer> e : addedByLocation.entrySet()) {
@@ -199,7 +199,7 @@ class Ledger {
             for (Operation op : task.cwp.operations) {
                 ResourceGroup g = model.groups.get(task.operationResource.get(op.code));
                 BigDecimal daily = op.workload.divide(BigDecimal.valueOf(task.cwp.duration), 12, RoundingMode.HALF_UP);
-                int persons = daily.divide(op.workloadPerPersonDay, 0, RoundingMode.CEILING).intValue();
+                int persons = daily.multiply(op.workloadPerPersonDay).setScale(0, RoundingMode.CEILING).intValue();
                 Integer old = result.get(g.locationCode); result.put(g.locationCode, (old == null ? 0 : old) + persons);
             }
             return result;

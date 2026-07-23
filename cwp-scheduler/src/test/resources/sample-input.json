@@ -399,7 +399,8 @@
 						},
 						"resourceGroup": {
 							"resourceGroupId": "RG_PREFAB_AREA_01"
-						}
+						},
+						"workloadRatio": 1.0
 					}
 				]
 			}
@@ -451,7 +452,8 @@
 						},
 						"resourceGroup": {
 							"resourceGroupId": "RG_ASSEMBLY_STATION"
-						}
+						},
+						"workloadRatio": 1.0
 					}
 				]
 			}
@@ -503,7 +505,8 @@
 						},
 						"resourceGroup": {
 							"resourceGroupId": "RG_ASSEMBLY_STATION"
-						}
+						},
+						"workloadRatio": 1.0
 					}
 				]
 			}
@@ -539,13 +542,14 @@
 						"opName": "工序",
 						"sequence": 10,
 						"laborNorm": {
-							"workloadPerPersonDay": 55,
+							"workloadPerPersonDay": 0.0182,
 							"workloadUnit": "平方米",
 							"laborUnit": "工日"
 						},
 						"resourceGroup": {
 							"resourceGroupId": "RG_BLAST_DECK_01"
-						}
+						},
+						"workloadRatio": 1.0
 					}
 				]
 			}
@@ -581,13 +585,14 @@
 						"opName": "工序",
 						"sequence": 10,
 						"laborNorm": {
-							"workloadPerPersonDay": 48,
+							"workloadPerPersonDay": 0.0208,
 							"workloadUnit": "平方米",
 							"laborUnit": "工日"
 						},
 						"resourceGroup": {
 							"resourceGroupId": "RG_BLAST_PARTS_01"
-						}
+						},
+						"workloadRatio": 1.0
 					}
 				]
 			}
@@ -623,13 +628,14 @@
 						"opName": "工序",
 						"sequence": 10,
 						"laborNorm": {
-							"workloadPerPersonDay": 22,
+							"workloadPerPersonDay": 0.0455,
 							"workloadUnit": "米",
 							"laborUnit": "工日"
 						},
 						"resourceGroup": {
 							"resourceGroupId": "RG_PIPE_01"
-						}
+						},
+						"workloadRatio": 1.0
 					}
 				]
 			}
@@ -665,13 +671,14 @@
 						"opName": "工序",
 						"sequence": 10,
 						"laborNorm": {
-							"workloadPerPersonDay": 18,
+							"workloadPerPersonDay": 0.05,
 							"workloadUnit": "米",
 							"laborUnit": "工日"
 						},
 						"resourceGroup": {
 							"resourceGroupId": "RG_PIPING_PREFAB_01"
-						}
+						},
+						"workloadRatio": 1.0
 					}
 				]
 			}

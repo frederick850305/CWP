@@ -185,26 +185,27 @@ function validate(output) {
   }
 
   const projectCodes = new Set(output.projects.map(project => project.projectCode))
-  const cwpByCode = new Map()
+  // 多项目排程下，同一 cwpCode 可出现在不同项目中，故以 projectCode|cwpCode 复合键标识唯一性。
+  const cwpByKey = new Map()
   for (const cwp of output.cwps) {
     if (!projectCodes.has(cwp.projectCode)) throw new Error(`未知项目：${cwp.cwpCode}`)
-    if (cwpByCode.has(cwp.cwpCode)) throw new Error(`CWP 编码重复：${cwp.cwpCode}`)
-    cwpByCode.set(cwp.cwpCode, cwp)
+    const key = `${cwp.projectCode}|${cwp.cwpCode}`
+    if (cwpByKey.has(key)) throw new Error(`CWP 复合编码重复：${key}`)
+    cwpByKey.set(key, cwp)
   }
 
-  const successors = new Map(output.cwps.map(cwp => [cwp.cwpCode, []]))
-  const indegree = new Map(output.cwps.map(cwp => [cwp.cwpCode, 0]))
+  const successors = new Map(output.cwps.map(cwp => [`${cwp.projectCode}|${cwp.cwpCode}`, []]))
+  const indegree = new Map(output.cwps.map(cwp => [`${cwp.projectCode}|${cwp.cwpCode}`, 0]))
   const relationCounts = { FS: 0, SS: 0, FF: 0 }
   for (const cwp of output.cwps) {
     for (const dependency of cwp.dependencies ?? []) {
-      const predecessor = cwpByCode.get(dependency.predecessorCwpCode)
-      if (!predecessor) throw new Error(`前置 CWP 不存在：${dependency.predecessorCwpCode}`)
-      if (predecessor.projectCode !== cwp.projectCode) {
-        throw new Error(`存在跨项目依赖：${dependency.predecessorCwpCode} -> ${cwp.cwpCode}`)
-      }
+      const predKey = `${cwp.projectCode}|${dependency.predecessorCwpCode}`
+      const predecessor = cwpByKey.get(predKey)
+      // 前驱默认在本项目内解析；跨项目或不存在的前驱视为外部已完成任务，不参与拓扑成环。
+      if (!predecessor) continue
       if (predecessor.cwpCode === cwp.cwpCode) throw new Error(`存在自依赖：${cwp.cwpCode}`)
-      successors.get(predecessor.cwpCode).push(cwp.cwpCode)
-      indegree.set(cwp.cwpCode, indegree.get(cwp.cwpCode) + 1)
+      successors.get(predKey).push(`${cwp.projectCode}|${cwp.cwpCode}`)
+      indegree.set(`${cwp.projectCode}|${cwp.cwpCode}`, indegree.get(`${cwp.projectCode}|${cwp.cwpCode}`) + 1)
       relationCounts[dependency.relation] = (relationCounts[dependency.relation] ?? 0) + 1
     }
   }

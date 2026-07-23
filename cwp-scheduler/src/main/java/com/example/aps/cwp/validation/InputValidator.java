@@ -28,12 +28,22 @@ public class InputValidator {
 
         Map<String, JsonNode> groups = index(root.path("resourceBindingPolicy").path("resourceGroups"),
                 "resourceGroupId", "resource group", errors);
-        Map<String, JsonNode> cwps = index(root.path("cwps"), "cwpCode", "CWP", errors);
+        Map<String, JsonNode> cwps = indexComposite(root.path("cwps"), "projectCode", "cwpCode", "CWP", errors);
+        // 跨项目唯一 cwpCode 的前驱解析：仅当某 cwpCode 全局只出现一次时，才允许在异项目间解析前驱。
+        Map<String, String> uniqueCwpCode = new HashMap<String, String>();
+        Map<String, Integer> cwpCodeCount = new HashMap<String, Integer>();
+        for (JsonNode n : root.path("cwps")) {
+            String code = text(n, "cwpCode");
+            cwpCodeCount.put(code, cwpCodeCount.getOrDefault(code, 0) + 1);
+            uniqueCwpCode.put(code, compositeKey(text(n, "projectCode"), code));
+        }
+        for (Map.Entry<String, Integer> e : cwpCodeCount.entrySet())
+            if (e.getValue() > 1) uniqueCwpCode.remove(e.getKey());
         Set<String> projectCodes = values(root.path("projects"), "projectCode");
         validateGroups(groups, errors, warnings);
-        validateCwps(root.path("cwps"), cwps, groups, projectCodes, errors, warnings);
+        validateCwps(root.path("cwps"), cwps, groups, projectCodes, uniqueCwpCode, errors, warnings);
         validateCosts(root.path("costModel"), groups, root.path("locationLaborConstraints"), errors);
-        validateDependencyCycles(cwps, errors);
+        validateDependencyCycles(cwps, uniqueCwpCode, errors);
         if (!errors.isEmpty()) throw new ValidationException(errors);
         return new ValidationResult(warnings);
     }
@@ -81,7 +91,7 @@ public class InputValidator {
     }
 
     private void validateCwps(JsonNode array, Map<String, JsonNode> cwps, Map<String, JsonNode> groups,
-                              Set<String> projectCodes, List<String> errors, List<String> warnings) {
+                              Set<String> projectCodes, Map<String, String> uniqueCwpCode, List<String> errors, List<String> warnings) {
         for (JsonNode cwp : array) {
             String code = text(cwp, "cwpCode");
             if (!projectCodes.contains(text(cwp, "projectCode")))
@@ -128,7 +138,9 @@ public class InputValidator {
 
             for (JsonNode dep : cwp.path("dependencies")) {
                 String predecessor = text(dep, "predecessorCwpCode");
-                if (!cwps.containsKey(predecessor))
+                String composite = compositeKey(text(cwp, "projectCode"), predecessor);
+                boolean external = !cwps.containsKey(composite) && !uniqueCwpCode.containsKey(predecessor);
+                if (external)
                     warnings.add(code + " predecessor " + predecessor + " is external and treated as completed");
                 String relation = text(dep, "relation");
                 if (!"FS".equals(relation) && !"SS".equals(relation)
@@ -165,6 +177,9 @@ public class InputValidator {
     private void validateCosts(JsonNode costModel, Map<String, JsonNode> groups, JsonNode laborConstraints,
                                List<String> errors) {
         if (!costModel.path("enabled").asBoolean(false)) return;
+        // 主数据模式：单价由主数据提供，JSON 中不必填成本表，跳过“缺失”与单价相关校验。
+        boolean masterData = "masterData".equals(text(costModel, "sourceMode"));
+        if (masterData) return;
         Set<String> laborRates = values(costModel.path("laborUnitCosts"), "locationCode");
         Set<String> resourceRates = values(costModel.path("resourceCostRates"), "resourceGroupId");
         Set<String> requiredLaborLocations = new HashSet<String>();
@@ -190,23 +205,36 @@ public class InputValidator {
         nonNegative(costModel, "lockViolationCostPerDay", "costModel", errors);
     }
 
-    private void validateDependencyCycles(Map<String, JsonNode> cwps, List<String> errors) {
+    private void validateDependencyCycles(Map<String, JsonNode> cwps, Map<String, String> uniqueCwpCode, List<String> errors) {
+        // 构建复合键邻接表：前驱默认在本项目内解析（projectCode|cwpCode），
+        // 仅当 cwpCode 全局唯一时回退跨项目解析，其余视为外部（不参与成环）。
+        Map<String, List<String>> adjacency = new LinkedHashMap<String, List<String>>();
+        for (Map.Entry<String, JsonNode> entry : cwps.entrySet()) {
+            String key = entry.getKey();
+            JsonNode cwp = entry.getValue();
+            String project = text(cwp, "projectCode");
+            List<String> predecessors = new ArrayList<String>();
+            for (JsonNode dep : cwp.path("dependencies")) {
+                String pc = text(dep, "predecessorCwpCode");
+                String composite = compositeKey(project, pc);
+                String resolved = cwps.containsKey(composite) ? composite : uniqueCwpCode.get(pc);
+                if (resolved != null) predecessors.add(resolved);
+            }
+            adjacency.put(key, predecessors);
+        }
         Map<String, Integer> state = new HashMap<String, Integer>();
-        for (String code : cwps.keySet()) if (visit(code, cwps, state)) {
-            errors.add("Dependency graph contains a cycle involving " + code);
+        for (String key : adjacency.keySet()) if (visit(key, adjacency, state)) {
+            errors.add("Dependency graph contains a cycle involving " + key);
             return;
         }
     }
 
-    private boolean visit(String code, Map<String, JsonNode> cwps, Map<String, Integer> state) {
-        Integer s = state.get(code);
+    private boolean visit(String key, Map<String, List<String>> adjacency, Map<String, Integer> state) {
+        Integer s = state.get(key);
         if (s != null) return s == 1;
-        state.put(code, 1);
-        for (JsonNode dep : cwps.get(code).path("dependencies")) {
-            String predecessor = text(dep, "predecessorCwpCode");
-            if (cwps.containsKey(predecessor) && visit(predecessor, cwps, state)) return true;
-        }
-        state.put(code, 2);
+        state.put(key, 1);
+        for (String predecessor : adjacency.get(key)) if (visit(predecessor, adjacency, state)) return true;
+        state.put(key, 2);
         return false;
     }
 
@@ -216,6 +244,18 @@ public class InputValidator {
         for (JsonNode item : array) {
             String key = text(item, field);
             if (key.length() == 0) errors.add("Missing " + field + " in " + label);
+            else if (result.put(key, item) != null) errors.add("Duplicate " + label + " id: " + key);
+        }
+        return result;
+    }
+
+    /** 复合键索引：以 projectCode|cwpCode 作为唯一键，允许不同项目下存在相同的 cwpCode。 */
+    private Map<String, JsonNode> indexComposite(JsonNode array, String projectField, String codeField, String label, List<String> errors) {
+        Map<String, JsonNode> result = new LinkedHashMap<String, JsonNode>();
+        if (!array.isArray()) return result;
+        for (JsonNode item : array) {
+            String key = text(item, projectField) + "|" + text(item, codeField);
+            if (text(item, codeField).length() == 0) errors.add("Missing " + codeField + " in " + label);
             else if (result.put(key, item) != null) errors.add("Duplicate " + label + " id: " + key);
         }
         return result;
@@ -245,6 +285,9 @@ public class InputValidator {
         return node.path(field).isNumber() ? node.path(field).decimalValue() : BigDecimal.ZERO;
     }
     private String text(JsonNode node, String field) { return node.path(field).asText(""); }
+
+    /** 复合键：项目编码 + CWP 编码，多项目排程下唯一标识一个调度 CWP。 */
+    private String compositeKey(String projectCode, String cwpCode) { return projectCode + "|" + cwpCode; }
 
     public static class ValidationResult {
         private final List<String> warnings;

@@ -96,9 +96,11 @@ final class Domain {
         BigDecimal occupancyUnitCostPerDay = BigDecimal.ZERO;
         BigDecimal blockUnitCostPerDay = BigDecimal.ZERO;
     }
-    /** 成本模型：是否启用、计划日期偏差单价、锁定违反单价。 */
+    /** 成本模型：仅作为输出指标与展示说明，不参与排程条件（排程不以成本择优）。 */
     static final class CostModel {
         boolean enabled;
+        String sourceMode = "";              // masterData / explicit，决定单价来源
+        String description = "";             // 输出展示用说明
         BigDecimal deviationPerDay = BigDecimal.ZERO;
         BigDecimal lockViolationPerDay = BigDecimal.ZERO;
     }
@@ -113,6 +115,7 @@ final class Domain {
     /** 工作包(CWP)：排程的基本单位，含计划窗口、工作量、依赖与工序。 */
     static final class Cwp {
         String code;
+        String key;                     // 复合键：projectCode|cwpCode，多项目下唯一标识一个调度 CWP
         String name;
         String projectCode;
         String projectName;
@@ -144,7 +147,8 @@ final class Domain {
     }
     /** 依赖：前驱 CWP 与本 CWP 的约束关系(FS/SS/FF/SF)及时滞。 */
     static final class Dependency {
-        String predecessor;
+        String predecessor;             // 复合键：projectCode|cwpCode（用于引擎索引/查找）
+        String predecessorCwpCode;      // 原始 cwpCode（用于输出展示）
         String relation;
         int lag;
     }
@@ -240,6 +244,8 @@ final class Domain {
             model.objectives.add(o);
         }
         JsonNode cost = root.path("costModel"); model.cost.enabled = cost.path("enabled").asBoolean(false);
+        model.cost.sourceMode = text(cost, "sourceMode");
+        model.cost.description = text(cost, "description");
         model.cost.deviationPerDay = decimal(cost, "scheduleDeviationCostPerDay");
         model.cost.lockViolationPerDay = decimal(cost, "lockViolationCostPerDay");
         for (JsonNode n : cost.path("laborUnitCosts"))
@@ -255,6 +261,7 @@ final class Domain {
         for (JsonNode n : root.path("cwps")) {
             Cwp c = new Cwp(); c.code = text(n, "cwpCode"); c.name = text(n, "cwpName");
             c.projectCode = text(n, "projectCode"); c.projectName = text(n, "projectName");
+            c.key = compositeKey(c.projectCode, c.code);
             c.priority = n.path("projectPriority").asInt(); c.plannedStartText = text(n, "plannedStart");
             c.plannedEndText = text(n, "plannedEnd"); c.plannedStart = date(c.plannedStartText, zone);
             c.plannedEnd = date(c.plannedEndText, zone); c.locked = n.path("isLocked").asBoolean(false);
@@ -271,10 +278,6 @@ final class Domain {
                 c.unit.rows = bn.path("rows").asInt(); c.unit.cols = bn.path("cols").asInt();
                 c.unit.blockCount = bn.path("blockCount").asInt(); c.unit.layout = text(bn, "layout");
             }
-            for (JsonNode dn : n.path("dependencies")) {
-                Dependency d = new Dependency(); d.predecessor = text(dn, "predecessorCwpCode");
-                d.relation = text(dn, "relation"); d.lag = dn.path("lag").asInt(0); c.dependencies.add(d);
-            }
             JsonNode ops = n.path("processRoute").path("operations");
             for (JsonNode on : ops) {
                 Operation op = new Operation(); op.code = text(on, "opCode"); op.name = text(on, "opName");
@@ -288,6 +291,34 @@ final class Domain {
             });
             model.cwps.add(c);
             if (model.horizonStart == null || c.plannedStart.isBefore(model.horizonStart)) model.horizonStart = c.plannedStart;
+        }
+        // 依赖解析放到第二遍：同一 cwpCode 可出现在不同项目下，前驱按“项目+编码”复合键定位；
+        // 仅当某 cwpCode 全局唯一（只属于一个项目）时，才允许跨项目解析，否则视为外部已完成任务。
+        Map<String, Cwp> byComposite = new LinkedHashMap<String, Cwp>();
+        Map<String, List<Cwp>> byCwpCode = new LinkedHashMap<String, List<Cwp>>();
+        for (Cwp c : model.cwps) {
+            byComposite.put(c.key, c);
+            List<Cwp> list = byCwpCode.get(c.code);
+            if (list == null) { list = new ArrayList<Cwp>(); byCwpCode.put(c.code, list); }
+            list.add(c);
+        }
+        int idx = 0;
+        for (JsonNode n : root.path("cwps")) {
+            Cwp c = model.cwps.get(idx++);
+            for (JsonNode dn : n.path("dependencies")) {
+                String pc = text(dn, "predecessorCwpCode");
+                Dependency d = new Dependency();
+                d.predecessorCwpCode = pc;
+                d.relation = text(dn, "relation");
+                d.lag = dn.path("lag").asInt(0);
+                String composite = compositeKey(c.projectCode, pc);
+                if (byComposite.containsKey(composite)) d.predecessor = composite;
+                else {
+                    List<Cwp> matches = byCwpCode.get(pc);
+                    d.predecessor = (matches != null && matches.size() == 1) ? matches.get(0).key : composite;
+                }
+                c.dependencies.add(d);
+            }
         }
         for (Project p : model.projects.values())
             if (model.horizonEnd == null || p.plannedEnd.isAfter(model.horizonEnd)) model.horizonEnd = p.plannedEnd;
@@ -304,4 +335,7 @@ final class Domain {
     static BigDecimal decimal(JsonNode n, String field) { return n.path(field).isNumber() ? n.path(field).decimalValue() : BigDecimal.ZERO; }
     /** 读取文本字段，缺失时返回空串。 */
     static String text(JsonNode n, String field) { return n.path(field).asText(""); }
+
+    /** 复合键：项目编码 + CWP 编码，多项目排程下唯一标识一个调度 CWP。 */
+    static String compositeKey(String projectCode, String cwpCode) { return projectCode + "|" + cwpCode; }
 }

@@ -80,7 +80,7 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
         // 1. 将接口 JSON 转换成排程领域模型，并建立 CWP 编码索引。
         Model model = Domain.parse(input, zone);
         Map<String, Cwp> cwpByCode = new LinkedHashMap<String, Cwp>();
-        for (Cwp c : model.cwps) cwpByCode.put(c.code, c);
+        for (Cwp c : model.cwps) cwpByCode.put(c.key, c);
         Set<String> criticalPlanned = plannedCriticalTasks(model, cwpByCode);
         Set<String> effectiveLocked = rules.isLockCriticalPredecessors()
                 ? expandLockedPredecessors(model.cwps, cwpByCode, criticalPlanned)
@@ -95,12 +95,12 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
         long deadline = started + properties.getTimeLimitSeconds() * 1000L;
         for (Cwp cwp : ordered) {
             ScheduledTask task;
-            if (effectiveLocked.contains(cwp.code)) {
+            if (effectiveLocked.contains(cwp.key)) {
                 // 锁定任务固定在原计划日期；资源冲突时保留日期并记录冲突原因。
                 task = candidate(cwp, cwp.plannedStart, model);
                 if (!place(task, model, ledger, true, rules)) {
                     if (!rules.isDiagnosticFallback())
-                        throw new IllegalStateException("Locked task has no feasible resource: " + cwp.code);
+                        throw new IllegalStateException("Locked task has no feasible resource: " + cwp.key);
                     task = candidate(cwp, cwp.plannedStart, model);
                     markForced(task, "LOCKED_RESOURCE_CONFLICT");
                     place(task, model, ledger, false, rules);
@@ -110,7 +110,7 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
                 task = findBestCandidate(cwp, model, ledger, scheduled, cwpByCode, deadline, rules);
                 if (task == null) {
                     if (!rules.isDiagnosticFallback())
-                        throw new IllegalStateException("No feasible schedule window for task: " + cwp.code);
+                        throw new IllegalStateException("No feasible schedule window for task: " + cwp.key);
                     // 无严格可行窗口时输出可解释的兜底结果，而不是静默丢弃任务。
                     LocalDate fallback = dependencyAdjustedStart(cwp, cwp.plannedStart, scheduled, cwpByCode);
                     task = candidate(cwp, fallback, model);
@@ -118,7 +118,7 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
                     place(task, model, ledger, false, rules);
                 }
             }
-            scheduled.put(cwp.code, task);
+            scheduled.put(cwp.key, task);
         }
 
         // 3. CWP 日期确定后，再为单体分配总装阶段、工位和网格区域。
@@ -300,9 +300,9 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
         final Comparator<Cwp> business = strategy.orderComparator(locked, rules);
         Collections.sort(result, new Comparator<Cwp>() {
             public int compare(Cwp a, Cwp b) {
-                int d = Integer.compare(depth.get(a.code), depth.get(b.code));
+                int d = Integer.compare(depth.get(a.key), depth.get(b.key));
                 if (d != 0) return d;
-                int l = Boolean.compare(locked.contains(b.code), locked.contains(a.code));
+                int l = Boolean.compare(locked.contains(b.key), locked.contains(a.key));
                 if (l != 0) return l;
                 return business.compare(a, b);
             }
@@ -312,22 +312,22 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
 
     /** 递归计算 CWP 的依赖深度（最长前置链长度），带缓存避免重复计算。 */
     private int computeDepth(Cwp c, Map<String, Cwp> byCode, Map<String, Integer> cache) {
-        Integer existing = cache.get(c.code); if (existing != null) return existing;
+        Integer existing = cache.get(c.key); if (existing != null) return existing;
         int depth = 0;
         for (Dependency d : c.dependencies) if (byCode.containsKey(d.predecessor))
             depth = Math.max(depth, 1 + computeDepth(byCode.get(d.predecessor), byCode, cache));
-        cache.put(c.code, depth); return depth;
+        cache.put(c.key, depth); return depth;
     }
 
     /** 基于计划日期识别零浮时(计划关键)任务，用于锁定传播。内部排序用默认策略，避免受所选算法影响。 */
     private Set<String> plannedCriticalTasks(Model model, Map<String, Cwp> byCode) {
         // 从项目计划结束日反向推算每个 CWP 的最晚完成时间；零浮时任务视为计划关键任务。
         Map<String, LocalDate> latestEnd = new HashMap<String, LocalDate>();
-        for (Cwp c : model.cwps) latestEnd.put(c.code, model.projects.get(c.projectCode).plannedEnd);
+        for (Cwp c : model.cwps) latestEnd.put(c.key, model.projects.get(c.projectCode).plannedEnd);
         List<Cwp> reverse = topologicalOrder(model.cwps, byCode, Collections.<String>emptySet(), new SolverRules(), new DefaultHeuristicStrategy());
         Collections.reverse(reverse);
         for (int iteration = 0; iteration < reverse.size(); iteration++) for (Cwp succ : reverse) {
-            LocalDate succEnd = latestEnd.get(succ.code);
+            LocalDate succEnd = latestEnd.get(succ.key);
             LocalDate succStart = succEnd.minusDays(succ.duration - 1L);
             for (Dependency d : succ.dependencies) {
                 Cwp pred = byCode.get(d.predecessor); if (pred == null) continue;
@@ -336,12 +336,12 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
                 else if ("SS".equals(d.relation)) bound = succStart.minusDays(d.lag).plusDays(pred.duration - 1L);
                 else if ("FF".equals(d.relation)) bound = succEnd.minusDays(d.lag);
                 else bound = succEnd.minusDays(d.lag).plusDays(pred.duration - 1L);
-                if (bound.isBefore(latestEnd.get(pred.code))) latestEnd.put(pred.code, bound);
+                if (bound.isBefore(latestEnd.get(pred.key))) latestEnd.put(pred.key, bound);
             }
         }
         Set<String> critical = new HashSet<String>();
         for (Cwp c : model.cwps) {
-            LocalDate latestStart = latestEnd.get(c.code).minusDays(c.duration - 1L);
+            LocalDate latestStart = latestEnd.get(c.key).minusDays(c.duration - 1L);
             if (latestStart.equals(c.plannedStart)) critical.add(c.code);
         }
         return critical;
@@ -352,8 +352,8 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
         // 若关键任务被锁定，其全部前置链也要一起保持稳定，避免锁定任务因依赖而失效。
         Set<String> result = new LinkedHashSet<String>();
         for (Cwp c : cwps) if (c.locked) {
-            result.add(c.code);
-            if (critical.contains(c.code)) addPredecessors(c, byCode, result);
+            result.add(c.key);
+            if (critical.contains(c.key)) addPredecessors(c, byCode, result);
         }
         return result;
     }
@@ -361,7 +361,7 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
     /** 直接以 isLocked 标记的任务集合作为锁定集合。 */
     private Set<String> explicitlyLocked(List<Cwp> cwps) {
         Set<String> result = new LinkedHashSet<String>();
-        for (Cwp cwp : cwps) if (cwp.locked) result.add(cwp.code);
+        for (Cwp cwp : cwps) if (cwp.locked) result.add(cwp.key);
         return result;
     }
 
@@ -369,7 +369,7 @@ public class HeuristicScheduleEngine implements ScheduleAlgorithm {
     private void addPredecessors(Cwp c, Map<String, Cwp> byCode, Set<String> result) {
         for (Dependency d : c.dependencies) {
             Cwp pred = byCode.get(d.predecessor);
-            if (pred != null && result.add(pred.code)) addPredecessors(pred, byCode, result);
+            if (pred != null && result.add(pred.key)) addPredecessors(pred, byCode, result);
         }
     }
 

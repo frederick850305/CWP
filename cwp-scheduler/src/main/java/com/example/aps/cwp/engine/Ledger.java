@@ -205,19 +205,13 @@ class Ledger {
             return result;
         }
 
-        BigDecimal incrementalCost(ScheduledTask task) {
-            // 当前目标函数为计划日期偏差成本；资源硬约束已在候选过滤阶段处理。
-            long deviation = Math.abs(ChronoUnit.DAYS.between(task.cwp.plannedStart, task.start));
-            return model.cost.deviationPerDay.multiply(BigDecimal.valueOf(deviation));
-        }
-
         BigDecimal avgUtilization() {
             if (utilCount == 0) return BigDecimal.ZERO;
             return sumUtil.divide(BigDecimal.valueOf(utilCount), 4, RoundingMode.HALF_UP);
         }
 
         ScheduledTask findTask(String code) {
-            for (ScheduledTask t : tasks) if (t.cwp.code.equals(code)) return t;
+            for (ScheduledTask t : tasks) if (t.cwp.key.equals(code)) return t;
             return null;
         }
 
@@ -232,38 +226,6 @@ class Ledger {
                 if (!depSatisfied(pred, task, d)) return 0;
             }
             return task.cwp.priority;
-        }
-
-        BigDecimal costOf(ScheduledTask task, Model model) {
-            // 该候选的完整增量成本：日期偏差 + 人力 + 产能加班 + 占用/网格 + 锁定期违反。
-            BigDecimal total = model.cost.deviationPerDay.multiply(BigDecimal.valueOf(Math.abs(ChronoUnit.DAYS.between(task.cwp.plannedStart, task.start))));
-            for (Map.Entry<String, Integer> e : laborPerLocation(task).entrySet()) {
-                BigDecimal rate = model.laborRates.get(e.getKey());
-                if (rate != null) total = total.add(rate.multiply(BigDecimal.valueOf(e.getValue())));
-            }
-            for (Operation op : task.cwp.operations) {
-                ResourceGroup g = model.groups.get(task.operationResource.get(op.code));
-                if (!"CAPACITY".equals(g.mode)) continue;
-                ResourceRate r = model.resourceRates.get(g.id);
-                if (r == null) continue;
-                for (Map.Entry<YearMonth, BigDecimal> e : monthlyWork(op.workload, task.start, task.end).entrySet()) {
-                    BigDecimal normal = e.getValue().min(g.baseline);
-                    BigDecimal overtime = e.getValue().subtract(g.baseline).max(BigDecimal.ZERO);
-                    total = total.add(normal.multiply(r.baselineUnitCost)).add(overtime.multiply(r.overtimeUnitCost));
-                }
-            }
-            long days = task.cwp.duration;
-            if (task.occupancy != null) {
-                ResourceRate r = model.resourceRates.get(task.occupancy.resourceGroupId);
-                if (r != null) total = total.add(task.cwp.occupancyRatio.multiply(BigDecimal.valueOf(days)).multiply(r.occupancyUnitCostPerDay));
-            }
-            if (task.grid != null) {
-                ResourceRate r = model.resourceRates.get(task.grid.resourceGroupId);
-                if (r != null) total = total.add(BigDecimal.valueOf(task.cwp.unit.blockCount).multiply(BigDecimal.valueOf(days)).multiply(r.blockUnitCostPerDay));
-            }
-            if (task.cwp.locked && (!task.start.equals(task.cwp.plannedStart) || !task.end.equals(task.cwp.plannedEnd)))
-                total = total.add(model.cost.lockViolationPerDay);
-            return total.setScale(2, RoundingMode.HALF_UP);
         }
 
         private static boolean depSatisfied(ScheduledTask pred, ScheduledTask succ, Dependency d) {

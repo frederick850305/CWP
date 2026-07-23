@@ -5,8 +5,8 @@ import com.example.aps.cwp.engine.Domain.Model;
 import com.example.aps.cwp.engine.Domain.Project;
 import com.example.aps.cwp.engine.Domain.ScheduledTask;
 import com.example.aps.cwp.rules.SolverRules;
-import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.Set;
 
@@ -43,19 +43,22 @@ public class PriorityFirstStrategy implements ScheduleStrategy {
 
     public int compareCandidates(ScheduledTask candidate, ScheduledTask best,
                                  Ledger trialCandidate, Ledger trialBest, Model model) {
-        // 评分 = 计划偏差成本 + 项目延期惩罚（一旦晚于项目计划完工日，加一个足够大的固定罚分）。
-        BigDecimal scoreCandidate = trialCandidate.incrementalCost(candidate).add(deadlinePenalty(candidate, model));
-        BigDecimal scoreBest = trialBest.incrementalCost(best).add(deadlinePenalty(best, model));
-        return scoreCandidate.compareTo(scoreBest);
+        // 评分 = 计划偏差天数 + 项目延期固定罚分（成本不作为排程条件，不做成本加权）。
+        long scoreCandidate = deviationDays(candidate) + deadlinePenalty(candidate, model);
+        long scoreBest = deviationDays(best) + deadlinePenalty(best, model);
+        return Long.compare(scoreCandidate, scoreBest);
     }
 
-    private static BigDecimal deadlinePenalty(ScheduledTask task, Model model) {
+    private static long deviationDays(ScheduledTask task) {
+        return Math.abs(ChronoUnit.DAYS.between(task.cwp.plannedStart, task.start));
+    }
+
+    private static long deadlinePenalty(ScheduledTask task, Model model) {
         Project project = model.projects.get(task.cwp.projectCode);
         if (project != null && project.finishHardConstraint && task.end.isAfter(project.plannedEnd)) {
-            // 用偏差单价放大作为罚分基准，保证它压过普通日期偏差，使“按期”优先于“贴计划日”。
-            BigDecimal unit = model.cost.deviationPerDay.max(BigDecimal.ONE);
-            return unit.multiply(BigDecimal.valueOf(1000L));
+            // 固定重罚：晚于项目计划完工日的候选一律压后，与成本单价无关。
+            return 1000L;
         }
-        return BigDecimal.ZERO;
+        return 0L;
     }
 }

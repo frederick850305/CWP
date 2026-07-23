@@ -32,9 +32,6 @@ public class AlgorithmRegistry {
         register(new HeuristicScheduleEngine(mapper, properties, new EarliestStartStrategy(),
                 "earliest-start", "尽早开工",
                 "在每个任务的可行窗口内尽早开始，以缩短整体工期为目标。"));
-        register(new HeuristicScheduleEngine(mapper, properties, new CostMinimizeStrategy(),
-                "cost-minimize", "成本最优",
-                "以综合成本（偏差、人力、产能加班、占用/网格、锁定）最低为目标择优。"));
     }
 
     private void register(ScheduleAlgorithm algorithm) {

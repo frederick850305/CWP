@@ -67,3 +67,32 @@ pkill -f "vite"                   # 停止前端
 - 本仓库仅包含 CWP 排程服务的源代码；投标文档、技术规格书、业务示例数据等资料单独管理，不纳入此代码仓库。
 - 排程结果与规则配置保存在服务内存中，重启后不保留。
 - 算法保证计算口径可复现、冲突可追溯，但不承诺数学意义上的全局最优。
+
+## 资源组可用量与示例数据
+
+### 资源组可用资源量约束
+
+排程输入 JSON 中，资源组的「可用资源量」由 `resourceBindingPolicy.resourceGroups[]` 按 `consumptionMode` 决定，外加 `locationLaborConstraints.locations[]` 的人力每日上限：
+
+| consumptionMode | 可用量字段 | 说明 |
+| --- | --- | --- |
+| `CAPACITY` | `capacity.baselineAmount`（基线）+ `capacity.maxAmount`（硬上限） | 超 `baselineAmount` 计加班成本；`maxAmount` 为不可突破的硬约束 |
+| `GRID_BLOCK` | `capacity.amount` | 总装网格月度小块可用总量 |
+| `OCCUPANCY_RATIO` | `regions[]` 元素个数 | 每个区域占用上限硬编码 1.0，**不使用 `capacity` 字段** |
+| 人力（并行） | `locationLaborConstraints.locations[].maxLaborPerDay` | 按 location 限制每日投入人数 |
+
+> `OCCUPANCY_RATIO` 模式只看 `regions[]` 的个数（每区上限 1.0），代码（`Domain.java` / `Ledger.java`）从不读取 `capacity`，因此该模式下出现 `capacity` 字段属于冗余且易误导。
+
+### 示例数据生成与版本控制约定
+
+- `cwp-scheduler/examples/cwp-schedule-base.json`：**受控样本**（64 CWP 基准模板），已纳入版本控制，是 `scale-test-data.mjs` 的输入来源。
+- `cwp-scheduler/examples/cwp-schedule-test.json`：由脚本从基准模板生成的 1000 CWP 大规模数据，**不纳入版本控制**（已在 `.gitignore` 中忽略）。本地运行 `node cwp-scheduler/scripts/scale-test-data.mjs` 即可重新生成。
+- 生成脚本 `generate-yard-test-data.mjs` 的 `occupancyGroup` 不再为 `OCCUPANCY_RATIO` 组输出 `capacity` 字段，符合文档口径。
+
+### 变更记录（PR #23）
+
+清理了 `OCCUPANCY_RATIO` 资源组中被代码忽略的冗余 `capacity` 字段（其 `amount` 与真实 `regions[]` 数量不一致，且排程引擎从不读取），使数据与说明文档一致：
+
+- 删除 `cwp-schedule-test.json` 与基准模板 `cwp-schedule-base.json` 中 6 个 `OCCUPANCY_RATIO` 组的 `capacity: { amount, unit }`；
+- 修正 `generate-yard-test-data.mjs` 源头，避免重新生成时再次带入冗余字段；
+- 调整 `.gitignore`，将基准模板纳入版本控制共享。

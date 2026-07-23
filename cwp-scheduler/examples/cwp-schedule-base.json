@@ -1,0 +1,3242 @@
+{
+  "optimizationObjectives": {
+    "enabled": true,
+    "objectives": []
+  },
+  "costModel": {
+    "enabled": true,
+    "scheduleDeviationCostPerDay": 500,
+    "lockViolationCostPerDay": 10000,
+    "laborUnitCosts": [
+      {
+        "locationCode": "LOC-CUT",
+        "amountPerPersonDay": 650
+      },
+      {
+        "locationCode": "LOC-BLAST",
+        "amountPerPersonDay": 680
+      },
+      {
+        "locationCode": "LOC-OUTFIT",
+        "amountPerPersonDay": 760
+      },
+      {
+        "locationCode": "LOC-FAB",
+        "amountPerPersonDay": 700
+      },
+      {
+        "locationCode": "LOC-PIPE",
+        "amountPerPersonDay": 760
+      }
+    ],
+    "resourceCostRates": [
+      {
+        "resourceGroupId": "YARD-INS",
+        "baselineUnitCost": 0,
+        "overtimeUnitCost": 0,
+        "occupancyUnitCostPerDay": 1200,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "VR-INS-GE",
+        "baselineUnitCost": 0,
+        "overtimeUnitCost": 0,
+        "occupancyUnitCostPerDay": 1200,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "OR-FAB-GE",
+        "baselineUnitCost": 18,
+        "overtimeUnitCost": 30,
+        "occupancyUnitCostPerDay": 0,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "BLASTING-SHOP-2",
+        "baselineUnitCost": 0,
+        "overtimeUnitCost": 0,
+        "occupancyUnitCostPerDay": 1200,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "BLASTING-SHOP-1",
+        "baselineUnitCost": 0,
+        "overtimeUnitCost": 0,
+        "occupancyUnitCostPerDay": 1200,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "C-YARD-FAB-MAN",
+        "baselineUnitCost": 18,
+        "overtimeUnitCost": 30,
+        "occupancyUnitCostPerDay": 0,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "YARD-PER-INS",
+        "baselineUnitCost": 0,
+        "overtimeUnitCost": 0,
+        "occupancyUnitCostPerDay": 1200,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "OR-FAB-ZG",
+        "baselineUnitCost": 18,
+        "overtimeUnitCost": 30,
+        "occupancyUnitCostPerDay": 0,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "C-YARD-FAB-ZG",
+        "baselineUnitCost": 18,
+        "overtimeUnitCost": 30,
+        "occupancyUnitCostPerDay": 0,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "C-CUT-PL",
+        "baselineUnitCost": 18,
+        "overtimeUnitCost": 30,
+        "occupancyUnitCostPerDay": 0,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "OR-FAB-ZHL",
+        "baselineUnitCost": 18,
+        "overtimeUnitCost": 30,
+        "occupancyUnitCostPerDay": 0,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "VR-FAB-PI",
+        "baselineUnitCost": 18,
+        "overtimeUnitCost": 30,
+        "occupancyUnitCostPerDay": 0,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "BLASTING-SHOP-3",
+        "baselineUnitCost": 0,
+        "overtimeUnitCost": 0,
+        "occupancyUnitCostPerDay": 1200,
+        "blockUnitCostPerDay": 0
+      },
+      {
+        "resourceGroupId": "C-CUT-PL-JK",
+        "baselineUnitCost": 18,
+        "overtimeUnitCost": 30,
+        "occupancyUnitCostPerDay": 0,
+        "blockUnitCostPerDay": 0
+      }
+    ]
+  },
+  "locationLaborConstraints": {
+    "enabled": true,
+    "locations": [
+      {
+        "locationCode": "LOC-CUT",
+        "locationName": "下料车间",
+        "maxLaborPerDay": 1100
+      },
+      {
+        "locationCode": "LOC-BLAST",
+        "locationName": "喷砂车间",
+        "maxLaborPerDay": 1600
+      },
+      {
+        "locationCode": "LOC-OUTFIT",
+        "locationName": "舾装区",
+        "maxLaborPerDay": 3200
+      },
+      {
+        "locationCode": "LOC-FAB",
+        "locationName": "结构预制车间",
+        "maxLaborPerDay": 2200
+      },
+      {
+        "locationCode": "LOC-PIPE",
+        "locationName": "工艺管线预制车间",
+        "maxLaborPerDay": 2200
+      }
+    ]
+  },
+  "projects": [
+    {
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "plannedEnd": "2025-04-25T00:00:00+08:00",
+      "finishHardConstraint": true
+    },
+    {
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "plannedEnd": "2025-05-20T00:00:00+08:00",
+      "finishHardConstraint": true
+    }
+  ],
+  "resourceBindingPolicy": {
+    "resourceGroups": [
+      {
+        "resourceGroupId": "YARD-INS",
+        "resourceGroupName": "场地舾装",
+        "consumptionMode": "OCCUPANCY_RATIO",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-OUTFIT",
+        "locationName": "舾装区",        "regions": [
+          {
+            "regionId": "YARD-INS-1",
+            "regionName": "YARD-INS-1"
+          },
+          {
+            "regionId": "YARD-INS-2",
+            "regionName": "YARD-INS-2"
+          },
+          {
+            "regionId": "YARD-INS-3",
+            "regionName": "YARD-INS-3"
+          },
+          {
+            "regionId": "YARD-INS-4",
+            "regionName": "YARD-INS-4"
+          },
+          {
+            "regionId": "YARD-INS-5",
+            "regionName": "YARD-INS-5"
+          },
+          {
+            "regionId": "YARD-INS-6",
+            "regionName": "YARD-INS-6"
+          }
+        ]
+      },
+      {
+        "resourceGroupId": "VR-INS-GE",
+        "resourceGroupName": "舾装设备线",
+        "consumptionMode": "OCCUPANCY_RATIO",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-OUTFIT",
+        "locationName": "舾装区",        "regions": [
+          {
+            "regionId": "INS-GE-1",
+            "regionName": "INS-GE-1"
+          },
+          {
+            "regionId": "INS-GE-2",
+            "regionName": "INS-GE-2"
+          },
+          {
+            "regionId": "INS-GE-3",
+            "regionName": "INS-GE-3"
+          }
+        ]
+      },
+      {
+        "resourceGroupId": "OR-FAB-GE",
+        "resourceGroupName": "管系设备预制线",
+        "consumptionMode": "CAPACITY",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-FAB",
+        "locationName": "结构预制车间",
+        "capacity": {
+          "baselineAmount": 16000,
+          "maxAmount": 20000,
+          "unit": "标准工时",
+          "timeUnit": "month"
+        }
+      },
+      {
+        "resourceGroupId": "BLASTING-SHOP-2",
+        "resourceGroupName": "喷砂车间2",
+        "consumptionMode": "OCCUPANCY_RATIO",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-BLAST",
+        "locationName": "喷砂车间",        "regions": [
+          {
+            "regionId": "BLAST-B2-A",
+            "regionName": "BLAST-B2-A"
+          },
+          {
+            "regionId": "BLAST-B2-B",
+            "regionName": "BLAST-B2-B"
+          }
+        ]
+      },
+      {
+        "resourceGroupId": "BLASTING-SHOP-1",
+        "resourceGroupName": "喷砂车间1",
+        "consumptionMode": "OCCUPANCY_RATIO",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-BLAST",
+        "locationName": "喷砂车间",        "regions": [
+          {
+            "regionId": "BLAST-B1-A",
+            "regionName": "BLAST-B1-A"
+          },
+          {
+            "regionId": "BLAST-B1-B",
+            "regionName": "BLAST-B1-B"
+          }
+        ]
+      },
+      {
+        "resourceGroupId": "C-YARD-FAB-MAN",
+        "resourceGroupName": "场地手动预制线",
+        "consumptionMode": "CAPACITY",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-FAB",
+        "locationName": "结构预制车间",
+        "capacity": {
+          "baselineAmount": 14000,
+          "maxAmount": 18000,
+          "unit": "标准工时",
+          "timeUnit": "month"
+        }
+      },
+      {
+        "resourceGroupId": "YARD-PER-INS",
+        "resourceGroupName": "场地预舾装",
+        "consumptionMode": "OCCUPANCY_RATIO",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-OUTFIT",
+        "locationName": "舾装区",        "regions": [
+          {
+            "regionId": "PER-INS-1",
+            "regionName": "PER-INS-1"
+          },
+          {
+            "regionId": "PER-INS-2",
+            "regionName": "PER-INS-2"
+          },
+          {
+            "regionId": "PER-INS-3",
+            "regionName": "PER-INS-3"
+          },
+          {
+            "regionId": "PER-INS-4",
+            "regionName": "PER-INS-4"
+          }
+        ]
+      },
+      {
+        "resourceGroupId": "OR-FAB-ZG",
+        "resourceGroupName": "管系总装预制线",
+        "consumptionMode": "CAPACITY",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-FAB",
+        "locationName": "结构预制车间",
+        "capacity": {
+          "baselineAmount": 16000,
+          "maxAmount": 20000,
+          "unit": "标准工时",
+          "timeUnit": "month"
+        }
+      },
+      {
+        "resourceGroupId": "C-YARD-FAB-ZG",
+        "resourceGroupName": "场地自动预制线",
+        "consumptionMode": "CAPACITY",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-FAB",
+        "locationName": "结构预制车间",
+        "capacity": {
+          "baselineAmount": 14000,
+          "maxAmount": 18000,
+          "unit": "标准工时",
+          "timeUnit": "month"
+        }
+      },
+      {
+        "resourceGroupId": "C-CUT-PL",
+        "resourceGroupName": "板材下料线",
+        "consumptionMode": "CAPACITY",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-CUT",
+        "locationName": "下料车间",
+        "capacity": {
+          "baselineAmount": 22000,
+          "maxAmount": 26000,
+          "unit": "标准工时",
+          "timeUnit": "month"
+        }
+      },
+      {
+        "resourceGroupId": "OR-FAB-ZHL",
+        "resourceGroupName": "管系舾装预制线",
+        "consumptionMode": "CAPACITY",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-FAB",
+        "locationName": "结构预制车间",
+        "capacity": {
+          "baselineAmount": 16000,
+          "maxAmount": 20000,
+          "unit": "标准工时",
+          "timeUnit": "month"
+        }
+      },
+      {
+        "resourceGroupId": "VR-FAB-PI",
+        "resourceGroupName": "管系预制线",
+        "consumptionMode": "CAPACITY",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-FAB",
+        "locationName": "结构预制车间",
+        "capacity": {
+          "baselineAmount": 16000,
+          "maxAmount": 20000,
+          "unit": "标准工时",
+          "timeUnit": "month"
+        }
+      },
+      {
+        "resourceGroupId": "BLASTING-SHOP-3",
+        "resourceGroupName": "喷砂车间3",
+        "consumptionMode": "OCCUPANCY_RATIO",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-BLAST",
+        "locationName": "喷砂车间",        "regions": [
+          {
+            "regionId": "BLAST-B3-A",
+            "regionName": "BLAST-B3-A"
+          },
+          {
+            "regionId": "BLAST-B3-B",
+            "regionName": "BLAST-B3-B"
+          }
+        ]
+      },
+      {
+        "resourceGroupId": "C-CUT-PL-JK",
+        "resourceGroupName": "甲板下料线",
+        "consumptionMode": "CAPACITY",
+        "substituteResourceGroupIds": [],
+        "locationCode": "LOC-CUT",
+        "locationName": "下料车间",
+        "capacity": {
+          "baselineAmount": 22000,
+          "maxAmount": 26000,
+          "unit": "标准工时",
+          "timeUnit": "month"
+        }
+      }
+    ]
+  },
+  "cwps": [
+    {
+      "cwpCode": "D1730",
+      "cwpName": "EL(+)12 500管支架、地漏、护管预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-06-15T00:00:00+08:00",
+      "plannedEnd": "2024-07-09T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3340.909090909091,
+        "progress": 0,
+        "unit": "each"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D3450",
+          "relation": "SS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-PI-NA-001",
+        "routeName": "配管散件预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-PI-NA-001-01",
+            "opName": "配管散件预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "each"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-GE",
+              "resourceGroupName": "小型钢结构外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A2960",
+      "cwpName": "ROW1片A导管卷制接长",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-04-01T00:00:00+08:00",
+      "plannedEnd": "2024-04-30T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 27575.942768974608,
+        "progress": 0,
+        "unit": "结构吨"
+      },
+      "dependencies": [],
+      "processRoute": {
+        "routeCode": "CWP-FAB-GE-PF-001",
+        "routeName": "拉筋卷制及接长",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-GE-PF-001-01",
+            "opName": "拉筋卷制及接长",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "结构吨"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-ZG",
+              "resourceGroupName": "制管外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C3480",
+      "cwpName": "EL(+)28 000甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-09-18T00:00:00+08:00",
+      "plannedEnd": "2024-11-01T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0.3785,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C13350",
+          "relation": "SS",
+          "lag": 24
+        },
+        {
+          "predecessorCwpCode": "C3470",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D4060",
+      "cwpName": "EL(+)19 000甲板片M2预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-09-13T00:00:00+08:00",
+      "plannedEnd": "2024-10-27T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D3460",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "E4060",
+      "cwpName": "EL(+)9.7 甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-09-28T00:00:00+08:00",
+      "plannedEnd": "2024-11-11T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "E3460",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C3240",
+      "cwpName": "仪表管安装",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-04-01T00:00:00+08:00",
+      "plannedEnd": "2024-04-20T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 10000,
+        "progress": 0,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C1970",
+          "relation": "SS",
+          "lag": 15
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-IN-NA-005",
+        "routeName": "仪表管安装",
+        "operations": [
+          {
+            "opCode": "CWP-INS-IN-NA-005-01",
+            "opName": "仪表管安装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C3460",
+      "cwpName": "EL(+)19 000甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-06-20T00:00:00+08:00",
+      "plannedEnd": "2024-08-03T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C1150",
+          "relation": "SS",
+          "lag": 25
+        },
+        {
+          "predecessorCwpCode": "C3450",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C3470",
+      "cwpName": "EL(+)23 000甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-08-04T00:00:00+08:00",
+      "plannedEnd": "2024-09-17T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C1160",
+          "relation": "SS",
+          "lag": 25
+        },
+        {
+          "predecessorCwpCode": "C3460",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D2390",
+      "cwpName": "仪表支架散件、托架支撑总装",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-06-10T00:00:00+08:00",
+      "plannedEnd": "2024-06-29T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3000,
+        "progress": 0,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D13430",
+          "relation": "FS",
+          "lag": 45
+        },
+        {
+          "predecessorCwpCode": "D2220",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-IN-NA-001",
+        "routeName": "仪表散件安装",
+        "operations": [
+          {
+            "opCode": "CWP-INS-IN-NA-001-01",
+            "opName": "仪表散件安装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D3240",
+      "cwpName": "仪表管安装",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-08-04T00:00:00+08:00",
+      "plannedEnd": "2024-08-23T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 2000,
+        "progress": 0,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D1970",
+          "relation": "SS",
+          "lag": 15
+        },
+        {
+          "predecessorCwpCode": "D2430",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-IN-NA-005",
+        "routeName": "仪表管安装",
+        "operations": [
+          {
+            "opCode": "CWP-INS-IN-NA-005-01",
+            "opName": "仪表管安装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D3480",
+      "cwpName": "EL(+)28 000甲板片U1预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-12-12T00:00:00+08:00",
+      "plannedEnd": "2025-01-25T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D13350",
+          "relation": "SS",
+          "lag": 25
+        },
+        {
+          "predecessorCwpCode": "D3470",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "E5920",
+      "cwpName": "EL(+)21.7甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-03-12T00:00:00+08:00",
+      "plannedEnd": "2025-04-25T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 1049.9999999999995,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "E3590",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C1730",
+      "cwpName": "EL(+)12 500管支架、地漏、护管预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-05-06T00:00:00+08:00",
+      "plannedEnd": "2024-05-30T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3340.909090909091,
+        "progress": 0.8617,
+        "unit": "mm"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C3450",
+          "relation": "SS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-PI-NA-001",
+        "routeName": "配管散件预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-PI-NA-001-01",
+            "opName": "配管散件预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "mm"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-GE",
+              "resourceGroupName": "小型钢结构外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D5920",
+      "cwpName": "EL(+)28 000甲板片U2预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-26T00:00:00+08:00",
+      "plannedEnd": "2025-03-11T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D3480",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D3720",
+      "cwpName": "称重（含称重结构总装）",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-04-11T00:00:00+08:00",
+      "plannedEnd": "2025-04-17T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 1,
+        "progress": 0,
+        "unit": "单体"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D3000",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "D3240",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "D3590",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-GE-NA-001",
+        "routeName": "称重",
+        "operations": [
+          {
+            "opCode": "CWP-INS-GE-NA-001-01",
+            "opName": "称重",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.0114,
+              "workloadUnit": "单体"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C2460",
+      "cwpName": "通讯设备支架预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-05-11T00:00:00+08:00",
+      "plannedEnd": "2024-06-04T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3340.909090909091,
+        "progress": 0.2,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C3450",
+          "relation": "SS",
+          "lag": 5
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-CO-NA-001",
+        "routeName": "通讯散件预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-CO-NA-001-01",
+            "opName": "通讯散件预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-GE",
+              "resourceGroupName": "小型钢结构外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "E3590",
+      "cwpName": "安全预舾装",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-02-10T00:00:00+08:00",
+      "plannedEnd": "2025-03-11T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 1,
+        "progress": 0,
+        "unit": "单体"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "E13470",
+          "relation": "SS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "E3480",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "E3580",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-SA-SJ-001",
+        "routeName": "安全专业预舾装",
+        "operations": [
+          {
+            "opCode": "CWP-INS-SA-SJ-001-01",
+            "opName": "安全专业预舾装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.037,
+              "workloadUnit": "单体"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "VR-INS-GE",
+              "resourceGroupName": "总装虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D2220",
+      "cwpName": "仪表散件标准件预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-05-16T00:00:00+08:00",
+      "plannedEnd": "2024-06-09T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3340.909090909091,
+        "progress": 0.9189,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D2250",
+          "relation": "SS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-IN-NA-001",
+        "routeName": "仪表散件预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-IN-NA-001-01",
+            "opName": "仪表散件预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-GE",
+              "resourceGroupName": "小型钢结构外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C2430",
+      "cwpName": "仪表电缆托架总装完善",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-01T00:00:00+08:00",
+      "plannedEnd": "2025-01-20T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 10000,
+        "progress": 0,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C2230",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "C2390",
+          "relation": "FF",
+          "lag": 5
+        },
+        {
+          "predecessorCwpCode": "C3590",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-IN-NA-002",
+        "routeName": "仪表托架安装",
+        "operations": [
+          {
+            "opCode": "CWP-INS-IN-NA-002-01",
+            "opName": "仪表托架安装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C3450",
+      "cwpName": "EL(+)12 500甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-05-06T00:00:00+08:00",
+      "plannedEnd": "2024-06-19T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C1000",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "C1110",
+          "relation": "SS",
+          "lag": 26
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C2560",
+      "cwpName": "通讯支架散件安装",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-06-05T00:00:00+08:00",
+      "plannedEnd": "2024-06-24T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 500,
+        "progress": 0,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C2370",
+          "relation": "FS",
+          "lag": 25
+        },
+        {
+          "predecessorCwpCode": "C2460",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-CO-NA-001",
+        "routeName": "通讯散件安装",
+        "operations": [
+          {
+            "opCode": "CWP-INS-CO-NA-001-01",
+            "opName": "通讯散件安装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D3460",
+      "cwpName": "EL(+)19 000甲板片M1预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-07-30T00:00:00+08:00",
+      "plannedEnd": "2024-09-12T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D1150",
+          "relation": "SS",
+          "lag": 25
+        },
+        {
+          "predecessorCwpCode": "D3450",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D3450",
+      "cwpName": "EL(+)12 500甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-06-15T00:00:00+08:00",
+      "plannedEnd": "2024-07-29T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D1000",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "D1110",
+          "relation": "SS",
+          "lag": 28
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C1000",
+      "cwpName": "EL(+)12 500拉筋卷制及接长",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-04-06T00:00:00+08:00",
+      "plannedEnd": "2024-05-05T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 4750.149281696212,
+        "progress": 0.0258,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C1110",
+          "relation": "FF",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-GE-PF-001",
+        "routeName": "拉筋卷制及接长",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-GE-PF-001-01",
+            "opName": "拉筋卷制及接长",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-ZG",
+              "resourceGroupName": "制管外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D3470",
+      "cwpName": "EL(+)23 000甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-10-28T00:00:00+08:00",
+      "plannedEnd": "2024-12-11T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D1160",
+          "relation": "SS",
+          "lag": 24
+        },
+        {
+          "predecessorCwpCode": "D4060",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "E3480",
+      "cwpName": "EL(+)17.7甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-12-27T00:00:00+08:00",
+      "plannedEnd": "2025-02-09T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 874.9999999999997,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "E3470",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "E3460",
+      "cwpName": "EL(+)5.7 甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-08-14T00:00:00+08:00",
+      "plannedEnd": "2024-09-27T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 524.9999999999998,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "E3450",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "E3470",
+      "cwpName": "EL(+)13.7甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-11-12T00:00:00+08:00",
+      "plannedEnd": "2024-12-26T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 699.9999999999998,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "E4060",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "E3450",
+      "cwpName": "EL(+)1.5 甲板片预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-06-30T00:00:00+08:00",
+      "plannedEnd": "2024-08-13T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 349.9999999999999,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-DF-001",
+        "routeName": "甲板片预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-DF-001-01",
+            "opName": "甲板片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D1000",
+      "cwpName": "EL(+)12 500拉筋卷制及接长",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-05-16T00:00:00+08:00",
+      "plannedEnd": "2024-06-14T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 24928.623887148835,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D1110",
+          "relation": "FF",
+          "lag": 10
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-GE-PF-001",
+        "routeName": "拉筋卷制及接长",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-GE-PF-001-01",
+            "opName": "拉筋卷制及接长",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-ZG",
+              "resourceGroupName": "制管外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C13470",
+      "cwpName": "EL(+)12 500结构专业预舾装",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-11-02T00:00:00+08:00",
+      "plannedEnd": "2024-12-01T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 875.0000000000001,
+        "progress": 0.2691,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C1030",
+          "relation": "SS",
+          "lag": 30
+        },
+        {
+          "predecessorCwpCode": "C1730",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "C3450",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "C3480",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-ST-NA-001",
+        "routeName": "结构专业预舾装",
+        "operations": [
+          {
+            "opCode": "CWP-INS-ST-NA-001-01",
+            "opName": "结构专业预舾装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D2460",
+      "cwpName": "通讯设备支架预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-06-20T00:00:00+08:00",
+      "plannedEnd": "2024-07-14T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3340.909090909091,
+        "progress": 0,
+        "unit": "EA"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D3450",
+          "relation": "SS",
+          "lag": 5
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-CO-NA-001",
+        "routeName": "通讯散件预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-CO-NA-001-01",
+            "opName": "通讯散件预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "EA"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-GE",
+              "resourceGroupName": "小型钢结构外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D3590",
+      "cwpName": "安全预舾装",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-03-12T00:00:00+08:00",
+      "plannedEnd": "2025-04-10T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 1,
+        "progress": 0,
+        "unit": "单体"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D13470",
+          "relation": "SS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "D1730",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "D3580",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "D5920",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-SA-SJ-001",
+        "routeName": "安全专业预舾装",
+        "operations": [
+          {
+            "opCode": "CWP-INS-SA-SJ-001-01",
+            "opName": "安全专业预舾装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.037,
+              "workloadUnit": "单体"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "VR-INS-GE",
+              "resourceGroupName": "总装虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "D2430",
+      "cwpName": "仪表电缆托架总装完善",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-07-15T00:00:00+08:00",
+      "plannedEnd": "2024-08-03T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 4000,
+        "progress": 0,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "D2390",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "D2460",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-IN-NA-002",
+        "routeName": "仪表托架安装",
+        "operations": [
+          {
+            "opCode": "CWP-INS-IN-NA-002-01",
+            "opName": "仪表托架安装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C2440",
+      "cwpName": "仪表电缆敷设",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-21T00:00:00+08:00",
+      "plannedEnd": "2025-02-09T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 10000,
+        "progress": 0,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C2430",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-IN-NA-003",
+        "routeName": "仪表电缆敷设",
+        "operations": [
+          {
+            "opCode": "CWP-INS-IN-NA-003-01",
+            "opName": "仪表电缆敷设",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C1110",
+      "cwpName": "EL(+)12 500组合梁预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-04-01T00:00:00+08:00",
+      "plannedEnd": "2024-05-05T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 12250,
+        "progress": 0.2667,
+        "unit": "kg"
+      },
+      "dependencies": [],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-PF-001",
+        "routeName": "组合梁预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-PF-001-01",
+            "opName": "组合梁预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "kg"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-ZHL",
+              "resourceGroupName": "组合梁外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C1150",
+      "cwpName": "EL(+)19 000组合梁预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-05-06T00:00:00+08:00",
+      "plannedEnd": "2024-06-09T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 12250,
+        "progress": 0,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C1110",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-PF-001",
+        "routeName": "组合梁预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-PF-001-01",
+            "opName": "组合梁预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-ZHL",
+              "resourceGroupName": "组合梁外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C2230",
+      "cwpName": "仪表设备支架预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-04-01T00:00:00+08:00",
+      "plannedEnd": "2024-04-25T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3340.909090909091,
+        "progress": 0,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C2300",
+          "relation": "SS",
+          "lag": -20
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-IN-NA-001",
+        "routeName": "仪表散件预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-IN-NA-001-01",
+            "opName": "仪表散件预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-GE",
+              "resourceGroupName": "小型钢结构外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C3590",
+      "cwpName": "安全预舾装",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-12-02T00:00:00+08:00",
+      "plannedEnd": "2024-12-31T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 1,
+        "progress": 0,
+        "unit": "单体"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C13470",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "C3580",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-INS-SA-SJ-001",
+        "routeName": "安全专业预舾装",
+        "operations": [
+          {
+            "opCode": "CWP-INS-SA-SJ-001-01",
+            "opName": "安全专业预舾装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.037,
+              "workloadUnit": "单体"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "VR-INS-GE",
+              "resourceGroupName": "总装虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "C1160",
+      "cwpName": "EL(+)23 000组合梁预制",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-06-10T00:00:00+08:00",
+      "plannedEnd": "2024-07-14T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 12250,
+        "progress": 0,
+        "unit": "KGM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "C1150",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-ST-PF-001",
+        "routeName": "组合梁预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-ST-PF-001-01",
+            "opName": "组合梁预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "KGM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-ZHL",
+              "resourceGroupName": "组合梁外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A2950",
+      "cwpName": "ROW1片B导管卷制接长",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-04-01T00:00:00+08:00",
+      "plannedEnd": "2024-04-30T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 24509.367020884285,
+        "progress": 0,
+        "unit": "TNE"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A2960",
+          "relation": "SS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-GE-PF-001",
+        "routeName": "拉筋卷制及接长",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-GE-PF-001-01",
+            "opName": "拉筋卷制及接长",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "TNE"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-ZG",
+              "resourceGroupName": "制管外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A2920",
+      "cwpName": "ROW1片拉筋卷制接长",
+      "projectCode": "C-0823027",
+      "projectName": "（第一轮测试）蓬莱19-3油田1/2/3/8/9区二次调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2024-04-01T00:00:00+08:00",
+      "plannedEnd": "2024-04-30T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 4750.149281696211,
+        "progress": 0,
+        "unit": "LM"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A2960",
+          "relation": "FF",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-FAB-GE-PF-001",
+        "routeName": "拉筋卷制及接长",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-GE-PF-001-01",
+            "opName": "拉筋卷制及接长",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "LM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-ZG",
+              "resourceGroupName": "制管外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1430",
+      "cwpName": "主吊点安装",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-02-25T00:00:00+08:00",
+      "plannedEnd": "2025-03-16T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 991.6666666666667,
+        "progress": 0,
+        "unit": "kg"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1450",
+          "relation": "FF",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A2070",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-INS-ST-NA-006",
+        "routeName": "JK一体化附件安装",
+        "operations": [
+          {
+            "opCode": "CWP-JK-INS-ST-NA-006-01",
+            "opName": "JK一体化附件安装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "kg"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1450",
+      "cwpName": "ROW片预制",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-31T00:00:00+08:00",
+      "plannedEnd": "2025-03-16T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 525,
+        "progress": 0,
+        "unit": "T"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1190",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A1200",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A1990",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A2990",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-ST-DF-002",
+        "routeName": "JK-ROW片预制",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-ST-DF-002-01",
+            "opName": "JK-ROW片预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "T"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1500",
+      "cwpName": "包板/阳极安装",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-03-17T00:00:00+08:00",
+      "plannedEnd": "2025-04-05T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 350.00000000000006,
+        "progress": 0,
+        "unit": "kg"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1440",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A1450",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-INS-ST-NA-006",
+        "routeName": "JK一体化附件安装",
+        "operations": [
+          {
+            "opCode": "CWP-JK-INS-ST-NA-006-01",
+            "opName": "JK一体化附件安装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "kg"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1680",
+      "cwpName": "ROW片涂装",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-04-06T00:00:00+08:00",
+      "plannedEnd": "2025-04-30T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 882.3529411764706,
+        "progress": 0,
+        "unit": "m2"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1430",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A1500",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A1650",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-PAT-CC-NA-003",
+        "routeName": "JK井口水平片涂装",
+        "operations": [
+          {
+            "opCode": "CWP-JK-PAT-CC-NA-003-01",
+            "opName": "JK井口水平片涂装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "m2"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "BLASTING-SHOP-2",
+              "resourceGroupName": "喷砂车间-碳钢散件"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1860",
+      "cwpName": "皇冠板预制",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-01T00:00:00+08:00",
+      "plannedEnd": "2025-01-25T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 17850,
+        "progress": 0,
+        "unit": "kg"
+      },
+      "dependencies": [],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-ST-CT-003",
+        "routeName": "JK包板/圆弧板下料",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-ST-CT-003-01",
+            "opName": "JK包板/圆弧板下料",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "kg"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-CUT-PL-JK",
+              "resourceGroupName": "制管板材下料"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1030",
+      "cwpName": "防沉板预制",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-26T00:00:00+08:00",
+      "plannedEnd": "2025-02-19T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 991.6666666666667,
+        "progress": 0,
+        "unit": "kg"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1020",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-ST-DF-001",
+        "routeName": "JK防沉板预制",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-ST-DF-001-01",
+            "opName": "JK防沉板预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "kg"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A2070",
+      "cwpName": "主吊点预制",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-01T00:00:00+08:00",
+      "plannedEnd": "2025-01-25T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 991.6666666666667,
+        "progress": 0,
+        "unit": "kg"
+      },
+      "dependencies": [],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-ST-DF-006",
+        "routeName": "JK-附件预制",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-ST-DF-006-01",
+            "opName": "JK-附件预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "kg"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1020",
+      "cwpName": "防沉板拉筋预制",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-01T00:00:00+08:00",
+      "plannedEnd": "2025-01-25T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3196.6200936056875,
+        "progress": 0,
+        "unit": "T"
+      },
+      "dependencies": [],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-GE-PF-001",
+        "routeName": "JK拉筋卷制及接长",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-GE-PF-001-01",
+            "opName": "JK拉筋卷制及接长",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "T"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-ZG",
+              "resourceGroupName": "C-制管生产线"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1200",
+      "cwpName": "ROW片拉筋卷制接长",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-01T00:00:00+08:00",
+      "plannedEnd": "2025-01-30T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3196.6200936056875,
+        "progress": 0,
+        "unit": "kg"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1190",
+          "relation": "SS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-GE-PF-001",
+        "routeName": "JK拉筋卷制及接长",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-GE-PF-001-01",
+            "opName": "JK拉筋卷制及接长",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "kg"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-ZG",
+              "resourceGroupName": "C-制管生产线"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A2990",
+      "cwpName": "井口大小口卷制",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-01T00:00:00+08:00",
+      "plannedEnd": "2025-01-30T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 5383.502519255705,
+        "progress": 0,
+        "unit": "kg"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1200",
+          "relation": "SS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-GE-PF-004",
+        "routeName": "JK大小口卷制（WX）",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-GE-PF-004-01",
+            "opName": "JK大小口卷制（WX）",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "kg"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-ZG",
+              "resourceGroupName": "制管外协虚拟资源"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1440",
+      "cwpName": "包板、支撑管、附件管预制",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-01T00:00:00+08:00",
+      "plannedEnd": "2025-01-25T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3150,
+        "progress": 0,
+        "unit": "kg"
+      },
+      "dependencies": [],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-ST-CT-003",
+        "routeName": "JK包板/圆弧板下料",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-ST-CT-003-01",
+            "opName": "JK包板/圆弧板下料",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "kg"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-CUT-PL-JK",
+              "resourceGroupName": "制管板材下料"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1410",
+      "cwpName": "井口导向预制",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-31T00:00:00+08:00",
+      "plannedEnd": "2025-02-24T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 991.6666666666667,
+        "progress": 0,
+        "unit": "T"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1290",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A1300",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-ST-DF-006",
+        "routeName": "JK-附件预制",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-ST-DF-006-01",
+            "opName": "JK-附件预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "T"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1990",
+      "cwpName": "ROW片导管卷制接长",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-01T00:00:00+08:00",
+      "plannedEnd": "2025-01-30T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3196.6200936056875,
+        "progress": 0.1082,
+        "unit": "kg"
+      },
+      "dependencies": [],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-GE-PF-002",
+        "routeName": "JK导管卷制接长",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-GE-PF-002-01",
+            "opName": "JK导管卷制接长",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "kg"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-ZG",
+              "resourceGroupName": "C-制管生产线"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1980",
+      "cwpName": "导管架陆地建造完工",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-05-16T00:00:00+08:00",
+      "plannedEnd": "2025-05-20T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 1,
+        "progress": 0,
+        "unit": "结构吨"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1030",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A1410",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A1850",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A1860",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "A1950",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "F2160",
+          "relation": "FS",
+          "lag": 0
+        },
+        {
+          "predecessorCwpCode": "F2200",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-INS-GE-NA-001",
+        "routeName": "JK脚手架拆除",
+        "operations": [
+          {
+            "opCode": "CWP-JK-INS-GE-NA-001-01",
+            "opName": "JK脚手架拆除",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "结构吨"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1950",
+      "cwpName": "整体补漆",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-05-01T00:00:00+08:00",
+      "plannedEnd": "2025-05-15T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 1102.9411764705883,
+        "progress": 0,
+        "unit": "m2"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1680",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-PAT-CC-NA-004",
+        "routeName": "JK现场补漆",
+        "operations": [
+          {
+            "opCode": "CWP-JK-PAT-CC-NA-004-01",
+            "opName": "JK现场补漆",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "m2"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1580",
+      "cwpName": "钢桩卷制",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-01T00:00:00+08:00",
+      "plannedEnd": "2025-01-30T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3196.6200936056875,
+        "progress": 0,
+        "unit": "T"
+      },
+      "dependencies": [],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-GE-PF-005",
+        "routeName": "JK钢桩卷制",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-GE-PF-005-01",
+            "opName": "JK钢桩卷制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "T"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-ZG",
+              "resourceGroupName": "C-制管生产线"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1850",
+      "cwpName": "钢桩涂装标记",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-03-02T00:00:00+08:00",
+      "plannedEnd": "2025-03-26T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 1250,
+        "progress": 0,
+        "unit": "m2"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1660",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-PAT-CC-NA-005",
+        "routeName": "JK钢桩涂装标记",
+        "operations": [
+          {
+            "opCode": "CWP-JK-PAT-CC-NA-005-01",
+            "opName": "JK钢桩涂装标记",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "m2"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1660",
+      "cwpName": "钢桩接长",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-31T00:00:00+08:00",
+      "plannedEnd": "2025-03-01T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3196.6200936056875,
+        "progress": 0,
+        "unit": "T"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1580",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-GE-PF-006",
+        "routeName": "JK钢桩接长",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-GE-PF-006-01",
+            "opName": "JK钢桩接长",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "T"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-ZG",
+              "resourceGroupName": "C-制管生产线"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1300",
+      "cwpName": "井口筒体卷制",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-01T00:00:00+08:00",
+      "plannedEnd": "2025-01-30T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3196.6200936056875,
+        "progress": 0,
+        "unit": "T"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1290",
+          "relation": "SS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-FAB-GE-PF-003",
+        "routeName": "JK附件管卷制接长",
+        "operations": [
+          {
+            "opCode": "CWP-JK-FAB-GE-PF-003-01",
+            "opName": "JK附件管卷制接长",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "T"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-ZG",
+              "resourceGroupName": "C-制管生产线"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "A1650",
+      "cwpName": "封隔器安装",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-03-17T00:00:00+08:00",
+      "plannedEnd": "2025-04-05T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 991.6666666666667,
+        "progress": 0,
+        "unit": "T"
+      },
+      "dependencies": [
+        {
+          "predecessorCwpCode": "A1450",
+          "relation": "FS",
+          "lag": 0
+        }
+      ],
+      "processRoute": {
+        "routeCode": "CWP-JK-INS-ST-NA-006",
+        "routeName": "JK一体化附件安装",
+        "operations": [
+          {
+            "opCode": "CWP-JK-INS-ST-NA-006-01",
+            "opName": "JK一体化附件安装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "T"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "C-YARD-FAB-MAN",
+              "resourceGroupName": "装焊场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "F2160",
+      "cwpName": "ROW2片导管卷制接长",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-31T00:00:00+08:00",
+      "plannedEnd": "2025-03-01T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 6701.860687544933,
+        "progress": 0,
+        "unit": "100LM"
+      },
+      "dependencies": [],
+      "processRoute": {
+        "routeCode": "CWP-INS-IN-NA-007",
+        "routeName": "仪表盘柜安装",
+        "operations": [
+          {
+            "opCode": "CWP-INS-IN-NA-007-01",
+            "opName": "仪表盘柜安装",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "100LM"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "YARD-INS",
+              "resourceGroupName": "总装场地"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "cwpCode": "F2200",
+      "cwpName": "ROW2片拉筋卷制接长",
+      "projectCode": "S-85250005",
+      "projectName": "曹妃甸11-1/3/5油田综合调整项目",
+      "projectPriority": 5,
+      "plannedStart": "2025-01-31T00:00:00+08:00",
+      "plannedEnd": "2025-03-01T00:00:00+08:00",
+      "isLocked": false,
+      "workload": {
+        "totalAmount": 3786.363636363636,
+        "progress": 0,
+        "unit": "结构吨"
+      },
+      "dependencies": [],
+      "processRoute": {
+        "routeCode": "CWP-FAB-CO-NA-001",
+        "routeName": "通讯散件预制",
+        "operations": [
+          {
+            "opCode": "CWP-FAB-CO-NA-001-01",
+            "opName": "通讯散件预制",
+            "sequence": 1,
+            "workloadRatio": 1.0,
+            "laborNorm": {
+              "workloadPerPersonDay": 0.05,
+              "workloadUnit": "结构吨"
+            },
+            "resourceGroup": {
+              "resourceGroupId": "OR-FAB-GE",
+              "resourceGroupName": "小型钢结构外协虚拟资源"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

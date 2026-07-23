@@ -30,7 +30,6 @@ function occupancyGroup(id, name, locationCode, locationName, regions, facilityR
     locationCode,
     locationName,
     facilityReference,
-    capacity: { amount: regions.length, unit: '独立区域' },
     regions: regions.map(([regionId, regionName]) => ({ regionId, regionName })),
   }
 }

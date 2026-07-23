@@ -222,7 +222,7 @@ final class OutputBuilder {
         n.put("resourceGroupId", g.id); n.put("resourceGroupName", g.name); n.put("conflictScope", "CWP"); return n;
     }
 
-    /** 项目关键路径：基于最晚完成时间反推零总时差 CWP 并列出关键链。 */
+    /** 项目关键路径：列出 FS（紧前/完成-开始）依赖链路上的每一项及其前后关系。 */
     private ObjectNode criticalPaths(Model model, Map<String, ScheduledTask> scheduled) {
         ObjectNode out = mapper.createObjectNode(); out.put("timeUnit", "day"); ArrayNode projects = out.putArray("projects");
         Map<String, LocalDate> latestEnd = calculateLatestEnds(model, scheduled);
@@ -235,18 +235,21 @@ final class OutputBuilder {
             p.put("projectFinishHardConstraint", project.finishHardConstraint);
             p.put("isProjectFinishOnTime", scheduledEnd != null && !scheduledEnd.isAfter(project.plannedEnd));
             ArrayNode critical = p.putArray("criticalPathCwps"); Set<String> criticalCodes = new HashSet<String>();
+            // 关键路径业务规则：FS（紧前/完成-开始）依赖链路上的每一项即为关键。
+            for (ScheduledTask t : tasks) for (Dependency d : t.cwp.dependencies)
+                if ("FS".equals(d.relation)) { criticalCodes.add(t.cwp.key); criticalCodes.add(d.predecessor); }
             for (ScheduledTask t : tasks) {
+                if (!criticalCodes.contains(t.cwp.key)) continue;
                 LocalDate latestStart = latestEnd.get(t.cwp.key).minusDays(t.cwp.duration - 1L);
                 long floatDays = ChronoUnit.DAYS.between(t.start, latestStart);
-                if (floatDays != 0) continue;
-                criticalCodes.add(t.cwp.key); ObjectNode c = critical.addObject();
+                ObjectNode c = critical.addObject();
                 c.put("cwpCode", t.cwp.code); c.put("cwpName", t.cwp.name); c.put("plannedStart", t.cwp.plannedStartText);
                 c.put("plannedEnd", t.cwp.plannedEndText); c.put("scheduledStart", Domain.atStart(t.start, zone));
                 c.put("scheduledEnd", Domain.atStart(t.end, zone)); c.put("totalFloatDays", floatDays); c.put("isCritical", true);
-                c.put("criticalReason", "总时差为0，任何后移都会消耗项目完工约束。");
+                c.put("criticalReason", "处于 FS 紧前依赖链路，须按前后关系在甘特图呈现。");
             }
             ArrayNode links = p.putArray("pathLinks");
-            for (ScheduledTask t : tasks) for (Dependency d : t.cwp.dependencies) if (criticalCodes.contains(t.cwp.key) && criticalCodes.contains(d.predecessor)) {
+            for (ScheduledTask t : tasks) for (Dependency d : t.cwp.dependencies) if ("FS".equals(d.relation) && criticalCodes.contains(t.cwp.key) && criticalCodes.contains(d.predecessor)) {
                 ObjectNode l = links.addObject(); l.put("fromCwpCode", d.predecessorCwpCode); l.put("toCwpCode", t.cwp.code);
                 l.put("relation", d.relation); l.put("lagDays", d.lag);
             }
@@ -317,17 +320,18 @@ final class OutputBuilder {
 
     /** CWP 甘特图：每个工作包的计划/实际起止、分配资源与冲突状态。 */
     /** CWP 甘特图：除每行任务条外，额外输出依据 dependencies 梳理的依赖连线，
-     * 并标注落在零总时差关键路径上的连线，供前端绘制依赖连接线。 */
+     * 并标注 FS（紧前/完成-开始）依赖链路上的关键连线，供前端按前后关系绘制依赖连接线。 */
     private ObjectNode cwpGantt(Model model, Map<String, ScheduledTask> scheduled) {
         ObjectNode out=mapper.createObjectNode();out.put("timeUnit","day");
-        // 计算零总时差的关键 CWP（与 projectCriticalPathOutput 同源口径）。
-        Map<String, LocalDate> latestEnd = calculateLatestEnds(model, scheduled);
+        // 关键路径业务规则：FS（紧前/完成-开始）依赖链路上的每一项即为关键路径成员，
+        // 其前后依赖关系须在甘特图清晰呈现。故 FS 依赖链上的 CWP 均标记为关键。
         Set<String> criticalCodes = new HashSet<String>();
         for (ScheduledTask t : scheduled.values()) {
-            LocalDate latestStart = latestEnd.get(t.cwp.key).minusDays(t.cwp.duration - 1L);
-            if (ChronoUnit.DAYS.between(t.start, latestStart) == 0) criticalCodes.add(t.cwp.key);
+            for (Dependency d : t.cwp.dependencies) {
+                if ("FS".equals(d.relation)) { criticalCodes.add(t.cwp.key); criticalCodes.add(d.predecessor); }
+            }
         }
-        // 依赖连线：遍历所有 dependencies，标出两端均处于关键路径的连线为关键路径连线。
+        // 依赖连线：遍历所有 dependencies，FS（紧前）依赖连线即关键路径连线，须在甘特图清晰呈现其前后关系。
         ArrayNode links = out.putArray("dependencyLinks");
         for (ScheduledTask succ : scheduled.values()) for (Dependency d : succ.cwp.dependencies) {
             if (!scheduled.containsKey(d.predecessor)) continue;
@@ -338,7 +342,7 @@ final class OutputBuilder {
             // 输出两端复合键，供前端精确绘制依赖连线。
             l.put("fromCwpKey", d.predecessor); l.put("toCwpKey", succ.cwp.key);
             l.put("relation", d.relation); l.put("lagDays", d.lag);
-            l.put("critical", criticalCodes.contains(d.predecessor) && criticalCodes.contains(succ.cwp.key));
+            l.put("critical", "FS".equals(d.relation)); // FS 紧前依赖即关键路径连线
         }
         ArrayNode tasks=out.putArray("tasks");
         for(ScheduledTask t:scheduled.values()){
@@ -355,7 +359,7 @@ final class OutputBuilder {
                 ObjectNode dep=deps.addObject();
                 dep.put("predecessorCwpCode", d.predecessorCwpCode); dep.put("relation", d.relation); dep.put("lagDays", d.lag);
             }
-            n.put("isCritical", criticalCodes.contains(t.cwp.code));
+            n.put("isCritical", criticalCodes.contains(t.cwp.key));
         }
         return out;
     }

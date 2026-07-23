@@ -47,6 +47,14 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!--
+                      本机终端可能带有 DEBUG=release 等非 Spring 用途的环境变量。
+                      Spring Boot 会把 DEBUG 映射为 debug 属性，导致误开启全量调试日志。
+                      系统属性优先于环境变量；仍可用 debug=true 命令行参数临时覆盖。
+                    -->
+                    <jvmArguments>-Ddebug=false</jvmArguments>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

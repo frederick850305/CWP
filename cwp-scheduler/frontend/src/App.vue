@@ -62,6 +62,18 @@ const maxLabor = computed(() => Math.max(1, ...laborRows.value.map(item => Numbe
 // 甘特图项目筛选
 const selectedProject = ref('all')
 
+/** 多项目下用 projectCode|cwpCode 唯一标识任务；兼容尚未返回 cwpKey 的旧结果。 */
+function ganttTaskKey(task) {
+  return task.cwpKey || `${task.projectCode || ''}|${task.cwpCode || ''}`
+}
+
+/** 依赖线两端的复合键可避免不同项目的同名 CWP 产生重复 Vue key。 */
+function ganttDependencyKey(link) {
+  const from = link.fromCwpKey || link.fromCwpCode || ''
+  const to = link.toCwpKey || link.toCwpCode || ''
+  return `${from}->${to}:${link.relation || ''}`
+}
+
 // 甘特图全屏展示：全屏时卡片以 fixed 覆盖整个视口，支持 Esc 退出。
 const ganttFullscreen = ref(false)
 const selectedConflictTask = ref(null)
@@ -157,12 +169,25 @@ const ganttDependencyLines = computed(() => {
   const links = dependencyLinks.value
   const rows = filteredTasks.value
   if (!rows.length) return []
-  const index = new Map(rows.map((t, i) => [t.cwpCode, i]))
+  const index = new Map(rows.map((task, i) => [ganttTaskKey(task), i]))
+  // 兼容旧结果：仅当当前筛选范围内 cwpCode 唯一时才允许按裸编码定位。
+  // “全部项目”中重复的旧编码无法可靠判断所属项目，宁可不画，也不能错连。
+  const legacyIndex = new Map()
+  const duplicateCodes = new Set()
+  rows.forEach((task, i) => {
+    if (legacyIndex.has(task.cwpCode)) duplicateCodes.add(task.cwpCode)
+    else legacyIndex.set(task.cwpCode, i)
+  })
+  duplicateCodes.forEach(code => legacyIndex.delete(code))
   const N = rows.length
   const out = []
   for (const link of links) {
-    const fi = index.get(link.fromCwpCode)
-    const ti = index.get(link.toCwpCode)
+    const fi = link.fromCwpKey
+      ? index.get(link.fromCwpKey)
+      : legacyIndex.get(link.fromCwpCode)
+    const ti = link.toCwpKey
+      ? index.get(link.toCwpKey)
+      : legacyIndex.get(link.toCwpCode)
     if (fi == null || ti == null) continue
     const fb = ganttStyle(rows[fi], 'scheduled')
     const tb = ganttStyle(rows[ti], 'scheduled')
@@ -821,7 +846,7 @@ onUnmounted(() => {
 
               <article class="content-card overview-gantt">
                 <div class="card-heading"><div><p class="eyebrow">SCHEDULE SNAPSHOT</p><h3>CWP 时间窗口</h3></div><button @click="activeTab = 'gantt'">展开甘特图 →</button></div>
-                <div class="mini-task" v-for="task in tasks.slice(0, 5)" :key="task.cwpCode">
+                <div class="mini-task" v-for="task in tasks.slice(0, 5)" :key="ganttTaskKey(task)">
                   <span class="mini-index">{{ String(tasks.indexOf(task) + 1).padStart(2, '0') }}</span>
                   <div><strong>{{ task.cwpName }}</strong><small>{{ task.cwpCode }} · {{ task.allocatedResourceGroupId }}</small></div>
                   <span>{{ formatDate(task.scheduledStart) }}</span><i></i><span>{{ formatDate(task.scheduledEnd) }}</span>
@@ -862,7 +887,7 @@ onUnmounted(() => {
                       </div>
                     </div>
                     <div class="gantt-body">
-                      <div v-for="task in filteredTasks" :key="task.cwpCode" class="gantt-row" :class="{ critical: task.isCritical }">
+                      <div v-for="task in filteredTasks" :key="ganttTaskKey(task)" class="gantt-row" :class="{ critical: task.isCritical }">
                         <div class="gantt-label"><strong>{{ task.cwpName }}</strong><small>{{ task.cwpCode }} · {{ task.allocatedResourceGroupId }}</small></div>
                         <div class="gantt-track">
                           <i v-for="tick in ganttRange.ticks" :key="tick.label + tick.offset" :style="{ left: `${tick.offset}%` }"></i>
@@ -882,7 +907,7 @@ onUnmounted(() => {
                             <path d="M1,1 L7,4 L1,7" fill="none" stroke="#7f9299" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
                           </marker>
                         </defs>
-                        <g v-for="line in ganttDependencyLines" :key="line.fromCwpCode + '->' + line.toCwpCode" class="dependency-path">
+                        <g v-for="line in ganttDependencyLines" :key="ganttDependencyKey(line)" class="dependency-path">
                           <title>{{ line.fromCwpCode }} → {{ line.toCwpCode }}（{{ line.relation }}{{ line.lagDays ? ' +' + line.lagDays + 'd' : '' }}）{{ line.critical ? ' · 关键路径' : '' }}</title>
                           <line v-for="(segment, segmentIndex) in line.segments" :key="segmentIndex"
                             :x1="`${segment.x1}%`" :y1="`${segment.y1}%`" :x2="`${segment.x2}%`" :y2="`${segment.y2}%`"

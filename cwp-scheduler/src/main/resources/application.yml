@@ -9,6 +9,11 @@ cwp:
     zone-id: Asia/Shanghai
 
 spring:
+  devtools:
+    # 前端由 Vite 独立提供热更新；关闭额外的 35729 监听，避免终端出现可选 LiveReload 端口异常。
+    # DevTools 的 Java 类热重启仍然保留。
+    livereload:
+      enabled: false
   jackson:
     default-property-inclusion: non_null
     serialization:

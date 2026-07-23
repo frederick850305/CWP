@@ -3,5 +3,4 @@
 
 # 演示/测试用用例数据
 # 受控样本：64 CWP 基准模板，纳入版本控制，作为生成脚本的输入来源
-# 大规模生成数据：由 scale-test-data.mjs 从基准模板生成，不进行版本控制
-cwp-scheduler/examples/cwp-schedule-test.json
+# 基准模板由 scale-test-data.mjs 生成；cwp-schedule-test.json 作为受控样本纳入版本控制，便于 CI 与本地复现。

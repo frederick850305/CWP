@@ -1,6 +1,7 @@
 package com.example.aps.cwp.engine;
 
 import com.example.aps.cwp.engine.Domain.Dependency;
+import com.example.aps.cwp.engine.Domain.Cwp;
 import com.example.aps.cwp.engine.Domain.LaborLimit;
 import com.example.aps.cwp.engine.Domain.Model;
 import com.example.aps.cwp.engine.Domain.Phase;
@@ -131,11 +132,13 @@ final class OutputBuilder {
             n.put("cwpCode", t.cwp.code); n.put("cwpName", t.cwp.name);
             String locCode = locationFor(t, model);
             n.put("locationCode", locCode); n.put("locationName", locationName(model, locCode));
-            int durationDays = t.cwp.duration > 0 ? t.cwp.duration : 1;
+            int durationDays = t.cwp.zeroWorkload ? 0 : Math.max(t.cwp.duration, 1);
             n.put("durationDays", durationDays);
             // 日均分配工作量 = 剩余工作量 / 持续天数（与 MD 公式一致，不按自然日展开）。
-            BigDecimal dailyAssigned = t.cwp.remaining.divide(BigDecimal.valueOf(durationDays), 4, RoundingMode.HALF_UP);
+            BigDecimal dailyAssigned = durationDays == 0 ? BigDecimal.ZERO
+                    : t.cwp.remaining.divide(BigDecimal.valueOf(durationDays), 4, RoundingMode.HALF_UP);
             n.set("dailyAssignedWorkload", number(dailyAssigned));
+            n.put("zeroWorkload", t.cwp.zeroWorkload);
             ArrayNode trades = n.putArray("tradeDemands");
             BigDecimal total = BigDecimal.ZERO;
             for (Domain.Operation op : t.cwp.operations) {
@@ -269,7 +272,7 @@ final class OutputBuilder {
                 if ("FS".equals(d.relation)) { criticalCodes.add(t.cwp.key); criticalCodes.add(d.predecessor); }
             for (ScheduledTask t : tasks) {
                 if (!criticalCodes.contains(t.cwp.key)) continue;
-                LocalDate latestStart = latestEnd.get(t.cwp.key).minusDays(t.cwp.duration - 1L);
+                LocalDate latestStart = latestEnd.get(t.cwp.key).minusDays(schedulingSpanDays(t.cwp));
                 long floatDays = ChronoUnit.DAYS.between(t.start, latestStart);
                 ObjectNode c = critical.addObject();
                 c.put("cwpCode", t.cwp.code); c.put("cwpName", t.cwp.name); c.put("plannedStart", t.cwp.plannedStartText);
@@ -299,14 +302,14 @@ final class OutputBuilder {
         for (ScheduledTask t : scheduled.values()) latest.put(t.cwp.key, forecastEndByProject.get(t.cwp.projectCode));
         List<ScheduledTask> reverse = new ArrayList<ScheduledTask>(scheduled.values()); Collections.reverse(reverse);
         for (int iteration = 0; iteration < reverse.size(); iteration++) for (ScheduledTask succ : reverse) {
-            LocalDate succEnd = latest.get(succ.cwp.key); LocalDate succStart = succEnd.minusDays(succ.cwp.duration - 1L);
+            LocalDate succEnd = latest.get(succ.cwp.key); LocalDate succStart = succEnd.minusDays(schedulingSpanDays(succ.cwp));
             for (Dependency d : succ.cwp.dependencies) {
                 ScheduledTask pred = scheduled.get(d.predecessor); if (pred == null) continue;
                 LocalDate bound;
-                if ("FS".equals(d.relation)) bound = succStart.minusDays(d.lag + 1L);
-                else if ("SS".equals(d.relation)) bound = succStart.minusDays(d.lag).plusDays(pred.cwp.duration - 1L);
+                if ("FS".equals(d.relation)) bound = succStart.minusDays(d.lag + fsBoundaryDays(pred.cwp));
+                else if ("SS".equals(d.relation)) bound = succStart.minusDays(d.lag).plusDays(schedulingSpanDays(pred.cwp));
                 else if ("FF".equals(d.relation)) bound = succEnd.minusDays(d.lag);
-                else bound = succEnd.minusDays(d.lag).plusDays(pred.cwp.duration - 1L);
+                else bound = succEnd.minusDays(d.lag).plusDays(schedulingSpanDays(pred.cwp));
                 if (bound.isBefore(latest.get(pred.cwp.key))) latest.put(pred.cwp.key, bound);
             }
         }
@@ -363,7 +366,8 @@ final class OutputBuilder {
         // 依赖连线：遍历所有 dependencies，FS（紧前）依赖连线即关键路径连线，须在甘特图清晰呈现其前后关系。
         ArrayNode links = out.putArray("dependencyLinks");
         for (ScheduledTask succ : scheduled.values()) for (Dependency d : succ.cwp.dependencies) {
-            if (!scheduled.containsKey(d.predecessor)) continue;
+            ScheduledTask pred = scheduled.get(d.predecessor);
+            if (pred == null) continue;
             ObjectNode l = links.addObject();
             l.put("fromCwpCode", d.predecessorCwpCode); l.put("toCwpCode", succ.cwp.code);
             // 复合键（projectCode|cwpCode）：任务条 tasks 以 projectCode+cwpCode 标识，
@@ -372,6 +376,7 @@ final class OutputBuilder {
             l.put("fromCwpKey", d.predecessor); l.put("toCwpKey", succ.cwp.key);
             l.put("relation", d.relation); l.put("lagDays", d.lag);
             l.put("critical", "FS".equals(d.relation)); // FS 紧前依赖即关键路径连线
+            l.put("involvesZeroWorkload", pred.cwp.zeroWorkload || succ.cwp.zeroWorkload);
         }
         ArrayNode tasks=out.putArray("tasks");
         for(ScheduledTask t:scheduled.values()){
@@ -381,6 +386,8 @@ final class OutputBuilder {
             n.put("plannedStart",t.cwp.plannedStartText);n.put("plannedEnd",t.cwp.plannedEndText);
             n.put("scheduledStart",Domain.atStart(t.start,zone));n.put("scheduledEnd",Domain.atStart(t.end,zone));
             n.put("status",t.withConflict?"scheduledWithConflict":"scheduled");n.set("progress",number(t.cwp.progress));
+            n.put("zeroWorkload",t.cwp.zeroWorkload);n.put("taskType",t.cwp.zeroWorkload?"ZERO_WORKLOAD":"STANDARD");
+            n.put("durationDays",t.cwp.zeroWorkload?0:t.cwp.duration);n.put("consumesResources",!t.cwp.zeroWorkload);
             ArrayNode violations=n.putArray("violations");for(String v:t.violationCodes)violations.add(v);
             // 本任务的直接前驱依赖，便于前端在行内展示与连线。
             ArrayNode deps=n.putArray("dependencies");
@@ -425,10 +432,11 @@ final class OutputBuilder {
         for(Map.Entry<String,BigDecimal>e:ledger.capacityByMonth.entrySet()){String id=e.getKey().split("\\|")[0];ResourceGroup g=model.groups.get(id);ResourceRate r=model.resourceRates.get(id);if(r==null)continue;BigDecimal normal=e.getValue().min(g.baseline);BigDecimal overtime=e.getValue().subtract(g.baseline).max(BigDecimal.ZERO);total=total.add(normal.multiply(r.baselineUnitCost)).add(overtime.multiply(r.overtimeUnitCost));}
         Set<String> gridUnits=new HashSet<String>();
         for(ScheduledTask t:scheduled.values()){
-            long days=t.cwp.duration;long deviation=Math.abs(ChronoUnit.DAYS.between(t.cwp.plannedStart,t.start));total=total.add(model.cost.deviationPerDay.multiply(BigDecimal.valueOf(deviation)));
+            long days=t.cwp.zeroWorkload?0L:t.cwp.duration;long deviation=Math.abs(ChronoUnit.DAYS.between(t.cwp.plannedStart,t.start));total=total.add(model.cost.deviationPerDay.multiply(BigDecimal.valueOf(deviation)));
             if(t.occupancy!=null){ResourceRate r=model.resourceRates.get(t.occupancy.resourceGroupId);if(r!=null)total=total.add(t.cwp.occupancyRatio.multiply(BigDecimal.valueOf(days)).multiply(r.occupancyUnitCostPerDay));}
             if(t.grid!=null&&gridUnits.add(t.cwp.unit.code)){ResourceRate r=model.resourceRates.get(t.grid.resourceGroupId);if(r!=null)total=total.add(BigDecimal.valueOf(t.cwp.unit.blockCount).multiply(BigDecimal.valueOf(days)).multiply(r.blockUnitCostPerDay));}
-            if(t.cwp.locked&&( !t.start.equals(t.cwp.plannedStart)||!t.end.equals(t.cwp.plannedEnd)))total=total.add(model.cost.lockViolationPerDay);
+            if(t.cwp.locked&&( !t.start.equals(t.cwp.plannedStart)
+                    ||(!t.cwp.zeroWorkload&&!t.end.equals(t.cwp.plannedEnd))))total=total.add(model.cost.lockViolationPerDay);
         }
         return total.setScale(2,RoundingMode.HALF_UP);
     }
@@ -468,6 +476,10 @@ final class OutputBuilder {
     private static final class OccupancyPeak{BigDecimal peak=BigDecimal.ZERO;String date;List<String>cwps=new ArrayList<String>();}
     /** 地点编码到地点名称的解析（先查人力上限，再查资源组）。 */
     private String locationName(Model m,String code){LaborLimit l=m.laborLimits.get(code);if(l!=null)return l.locationName;for(ResourceGroup g:m.groups.values())if(code.equals(g.locationCode))return g.locationName;return code;}
+    /** 普通任务为闭区间跨度 duration-1；零工程量节点不占时间。 */
+    private long schedulingSpanDays(Cwp cwp){return cwp.zeroWorkload?0L:cwp.duration-1L;}
+    /** FS 依赖中普通前驱跨到下一自然日，零工程量前驱不额外增加一天。 */
+    private long fsBoundaryDays(Cwp cwp){return cwp.zeroWorkload?0L:1L;}
     /** 将 BigDecimal 转为去尾零的 JSON 数值节点。 */
     private com.fasterxml.jackson.databind.JsonNode number(BigDecimal value){return mapper.getNodeFactory().numberNode(value.stripTrailingZeros());}
 

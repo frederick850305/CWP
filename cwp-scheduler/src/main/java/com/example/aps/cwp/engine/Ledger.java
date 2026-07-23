@@ -104,6 +104,10 @@ class Ledger {
 
         void reserveTask(ScheduledTask task) {
             // 候选确认后，一次性登记产能、人力、区域占用，供后续任务避让。
+            if (task.cwp.zeroWorkload) {
+                tasks.add(task);
+                return;
+            }
             for (Operation op : task.cwp.operations) {
                 ResourceGroup g = model.groups.get(task.operationResource.get(op.code));
                 if ("CAPACITY".equals(g.mode)) for (Map.Entry<YearMonth, BigDecimal> e : monthlyWork(op.workload, task.start, task.end).entrySet()) {
@@ -196,6 +200,7 @@ class Ledger {
 
         Map<String, Integer> laborPerLocation(ScheduledTask task) {
             Map<String, Integer> result = new HashMap<String, Integer>();
+            if (task.cwp.zeroWorkload) return result;
             for (Operation op : task.cwp.operations) {
                 ResourceGroup g = model.groups.get(task.operationResource.get(op.code));
                 BigDecimal daily = op.workload.divide(BigDecimal.valueOf(task.cwp.duration), 12, RoundingMode.HALF_UP);
@@ -229,7 +234,10 @@ class Ledger {
         }
 
         private static boolean depSatisfied(ScheduledTask pred, ScheduledTask succ, Dependency d) {
-            if ("FS".equals(d.relation)) return !succ.start.isBefore(pred.end.plusDays(d.lag + 1L));
+            if ("FS".equals(d.relation)) {
+                long boundaryDays = pred.cwp.zeroWorkload ? 0L : 1L;
+                return !succ.start.isBefore(pred.end.plusDays(d.lag + boundaryDays));
+            }
             if ("SS".equals(d.relation)) return !succ.start.isBefore(pred.start.plusDays(d.lag));
             if ("FF".equals(d.relation)) return !succ.end.isBefore(pred.end.plusDays(d.lag));
             return !succ.end.isBefore(pred.start.plusDays(d.lag));

@@ -104,7 +104,9 @@ public class InputValidator {
             BigDecimal progress = decimal(cwp.path("workload"), "progress");
             if (progress.compareTo(BigDecimal.ZERO) < 0 || progress.compareTo(BigDecimal.ONE) > 0)
                 errors.add(code + " workload.progress must be between 0 and 1");
-            positive(cwp.path("workload"), "totalAmount", code + ".workload", errors);
+            // totalAmount=0 表示零工程量 CWP：作为零工期依赖节点保留在甘特图中，
+            // 但不产生资源、人力和场地占用。负数仍属于非法输入。
+            nonNegative(cwp.path("workload"), "totalAmount", code + ".workload", errors);
 
             JsonNode ops = cwp.path("processRoute").path("operations");
             if (!ops.isArray() || ops.size() == 0) {

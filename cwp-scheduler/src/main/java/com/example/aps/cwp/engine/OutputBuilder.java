@@ -53,6 +53,7 @@ final class OutputBuilder {
         root.set("prefabStationGanttOutput", prefabGantt(model, scheduled));
         root.set("assemblyStationGanttOutput", assemblyGantt(model, scheduled));
         root.set("cwpGanttOutput", cwpGantt(model, scheduled));
+        root.set("cwpDailyLaborDemandByTrade", dailyLaborByTrade(model, scheduled));
         root.set("scheduleSummary", summary(model, scheduled, ledger, utilization, conflicts, warnings, runtimeMillis));
         root.set("costModel", costModelNode(model));
         return root;
@@ -119,6 +120,34 @@ final class OutputBuilder {
         }
         ArrayNode out = mapper.createArrayNode();
         for (Map.Entry<String, ArrayNode> e : months.entrySet()) { ObjectNode n = out.addObject(); n.put("month", e.getKey()); n.set("byLocation", e.getValue()); }
+        return out;
+    }
+
+    /** CWP 日均工种人力需求明细：按 CWP、按工种(工序)输出日均需求，不按自然日展开。 */
+    private ArrayNode dailyLaborByTrade(Model model, Map<String, ScheduledTask> scheduled) {
+        ArrayNode out = mapper.createArrayNode();
+        for (ScheduledTask t : scheduled.values()) {
+            ObjectNode n = out.addObject();
+            n.put("cwpCode", t.cwp.code); n.put("cwpName", t.cwp.name);
+            String locCode = locationFor(t, model);
+            n.put("locationCode", locCode); n.put("locationName", locationName(model, locCode));
+            int durationDays = t.cwp.duration > 0 ? t.cwp.duration : 1;
+            n.put("durationDays", durationDays);
+            // 日均分配工作量 = 剩余工作量 / 持续天数（与 MD 公式一致，不按自然日展开）。
+            BigDecimal dailyAssigned = t.cwp.remaining.divide(BigDecimal.valueOf(durationDays), 4, RoundingMode.HALF_UP);
+            n.set("dailyAssignedWorkload", number(dailyAssigned));
+            ArrayNode trades = n.putArray("tradeDemands");
+            BigDecimal total = BigDecimal.ZERO;
+            for (Domain.Operation op : t.cwp.operations) {
+                // 工种人力配比 tradeLaborRatio = 每单位工作量每天所需人数(workloadPerPersonDay)。
+                BigDecimal demand = dailyAssigned.multiply(op.workloadPerPersonDay);
+                if (demand.compareTo(BigDecimal.ZERO) <= 0) continue; // 仅输出日均需求大于 0 的工种
+                ObjectNode tr = trades.addObject();
+                tr.put("tradeName", op.name); tr.set("demand", number(demand.setScale(2, RoundingMode.HALF_UP)));
+                total = total.add(demand);
+            }
+            n.set("dailyLaborDemand", number(total.setScale(2, RoundingMode.HALF_UP)));
+        }
         return out;
     }
 

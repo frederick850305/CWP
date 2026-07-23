@@ -333,12 +333,16 @@ final class OutputBuilder {
             if (!scheduled.containsKey(d.predecessor)) continue;
             ObjectNode l = links.addObject();
             l.put("fromCwpCode", d.predecessorCwpCode); l.put("toCwpCode", succ.cwp.code);
+            // 复合键（projectCode|cwpCode）：任务条 tasks 以 projectCode+cwpCode 标识，
+            // 而同名 cwpCode 会在多个项目重复出现，单凭 cwpCode 无法唯一锚定连线端点。
+            // 输出两端复合键，供前端精确绘制依赖连线。
+            l.put("fromCwpKey", d.predecessor); l.put("toCwpKey", succ.cwp.key);
             l.put("relation", d.relation); l.put("lagDays", d.lag);
             l.put("critical", criticalCodes.contains(d.predecessor) && criticalCodes.contains(succ.cwp.key));
         }
         ArrayNode tasks=out.putArray("tasks");
         for(ScheduledTask t:scheduled.values()){
-            ObjectNode n=tasks.addObject();n.put("cwpCode",t.cwp.code);n.put("cwpName",t.cwp.name);n.put("projectCode",t.cwp.projectCode);
+            ObjectNode n=tasks.addObject();n.put("cwpKey",t.cwp.key);n.put("cwpCode",t.cwp.code);n.put("cwpName",t.cwp.name);n.put("projectCode",t.cwp.projectCode);
             String allocated=t.operationResource.isEmpty()?"":t.operationResource.values().iterator().next();
             n.put("allocatedResourceGroupId",allocated); n.put("locationCode", locationFor(t, model));
             n.put("plannedStart",t.cwp.plannedStartText);n.put("plannedEnd",t.cwp.plannedEndText);

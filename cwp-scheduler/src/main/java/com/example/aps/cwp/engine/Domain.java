@@ -139,7 +139,7 @@ final class Domain {
         int sequence;
         BigDecimal ratio;
         BigDecimal workload;
-        BigDecimal workloadPerPersonDay;
+        BigDecimal workloadPerPersonDay;   // 每单位工作量每天所需人数（人/单位工作量/天）
         String resourceGroupId;
     }
     /** 依赖：前驱 CWP 与本 CWP 的约束关系(FS/SS/FF/SF)及时滞。 */

@@ -89,10 +89,3 @@ pkill -f "vite"                   # 停止前端
 - `cwp-scheduler/examples/cwp-schedule-test.json`：由脚本从基准模板生成的 1000 CWP 大规模数据，**不纳入版本控制**（已在 `.gitignore` 中忽略）。本地运行 `node cwp-scheduler/scripts/scale-test-data.mjs` 即可重新生成。
 - 生成脚本 `generate-yard-test-data.mjs` 的 `occupancyGroup` 不再为 `OCCUPANCY_RATIO` 组输出 `capacity` 字段，符合文档口径。
 
-### 变更记录（PR #23）
-
-清理了 `OCCUPANCY_RATIO` 资源组中被代码忽略的冗余 `capacity` 字段（其 `amount` 与真实 `regions[]` 数量不一致，且排程引擎从不读取），使数据与说明文档一致：
-
-- 删除 `cwp-schedule-test.json` 与基准模板 `cwp-schedule-base.json` 中 6 个 `OCCUPANCY_RATIO` 组的 `capacity: { amount, unit }`；
-- 修正 `generate-yard-test-data.mjs` 源头，避免重新生成时再次带入冗余字段；
-- 调整 `.gitignore`，将基准模板纳入版本控制共享。
